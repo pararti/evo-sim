@@ -1,95 +1,100 @@
-# 🧬 EvoSim — Эволюционная симуляция с нейронными сетями
+# 🧬 EvoSim — Neural Network Evolution Simulation
 
-Симуляция искусственной жизни, где существа с мозгами из нейронных сетей эволюционируют, находят еду, размножаются и адаптируются к окружающей среде.
+An artificial life simulation where creatures with neural network brains evolve, find food, reproduce, and adapt to their environment through natural selection.
 
 ![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## 🎥 Демонстрация
+## 🎥 Demo
 
-Веб-интерфейс показывает реальное время симуляции: существа (круги) двигаются к ближайшей еде (квадраты), потребляют энергию и размножаются при накоплении достаточного запаса.
+The web interface shows the simulation in real-time: creatures (circles) move toward the nearest food (squares), consume energy, and reproduce when they accumulate enough reserves.
 
-## 🚀 Быстрый старт
+## 🚀 Quick Start
 
-### Локальный запуск
+### Local Run
 
 ```bash
-# Установка зависимостей
+# Install dependencies
 go mod download
 
-# Запуск симуляции
+# Run the simulation
 go run cmd/app/main.go
 ```
 
-Откройте http://localhost:8080 в браузере.
+Open http://localhost:8080 in your browser.
 
 ### Docker
 
 ```bash
-# Запуск с Docker Compose
+# Run with Docker Compose
 docker-compose up -d
 
-# Симуляция будет доступна на порту 8080
-# Caddy reverse proxy — на порту 8089
+# Simulation will be available on port 8080
+# Caddy reverse proxy — on port 8089
 ```
 
-## 🧠 Архитектура
+## 🧠 Architecture
 
-### Нейронная сеть существ
+### Creature Neural Network
 
-Каждое существо управляется **Feed-Forward Neural Network (FFNN)** с тремя слоями:
+Each creature is controlled by a **Feed-Forward Neural Network (FFNN)** with three layers:
 
-| Слой | Описание |
-|------|----------|
-| **Входной** | 3 нейрона: вектор к ближайшей еде (dx, dy) + уровень энергии |
-| **Скрытый** | 4 нейрона с функцией активации Tanh |
-| **Выходной** | 2 нейрона: скорость по X и Y |
+| Layer | Description |
+|-------|-------------|
+| **Input** | 3 neurons: vector to nearest food (dx, dy) + energy level |
+| **Hidden** | 4 neurons with Tanh activation function |
+| **Output** | 2 neurons: velocity X and Y |
 
-Поведение полностью эмерджентно — никакого хардкода типа "если голоден — иди к еде".
+Behavior is completely emergent — no hardcoded logic like "if hungry, go to food".
 
-### Эволюция
+### Evolution
 
-- **Размножение**: При энергии > 150 существо делится пополам
-- **Наследование**: Потомок получает копию весов родителя
-- **Мутация**: 10% весов изменяются случайным шумом
-- **Отбор**: Неудачливые существа умирают от голода
+- **Reproduction**: When energy > 150, the creature splits in half
+- **Inheritance**: Offspring receives a copy of the parent's weights
+- **Mutation**: 10% of weights are changed with random noise
+- **Selection**: Unlucky creatures die of starvation
 
-## 📁 Структура проекта
+## 📁 Project Structure
 
 ```
 .
-├── cmd/app/           # Точка входа
+├── cmd/app/           # Entry point
 ├── internal/
-│   ├── brain/         # Нейронная сеть (feed-forward, мутации)
-│   ├── entity/        # Существа и еда
-│   ├── world/         # Игровой движок и физика
-│   ├── server/        # HTTP + WebSocket сервер
-│   ├── storage/       # SQLite для сохранения состояния
-│   └── config/        # Конфигурация
-├── web/               # Фронтенд (HTML5 Canvas + WebSocket)
+│   ├── brain/         # Neural network (feed-forward, mutations)
+│   ├── entity/        # Creatures and food
+│   ├── world/         # Game engine and physics
+│   ├── server/        # HTTP + WebSocket server
+│   ├── storage/       # SQLite for state persistence
+│   └── config/        # Configuration
+├── web/               # Frontend (HTML5 Canvas + WebSocket)
 └── docker-compose.yml
 ```
 
-## ⚙️ Конфигурация
+## ⚙️ Configuration
 
-Через переменные окружения (`.env`):
+Via environment variables (`.env`):
 
 ```env
-WORLD_WIDTH=800         # Ширина мира
-WORLD_HEIGHT=600        # Высота мира
-INITIAL_CREATURES=20    # Начальное число существ
-INITIAL_FOOD=50         # Начальное число еды
-FOOD_SPAWN_RATE=2       # Новая еда каждые N тиков
-HTTP_PORT=8080          # Порт сервера
-DB_PATH=database.db     # Путь к SQLite
+WORLD_WIDTH=800         # World width
+WORLD_HEIGHT=600        # World height
+INITIAL_POP=20          # Initial creature count
+FOOD_COUNT=50           # Initial food count
+FOOD_ENERGY=50.0        # Energy gained from food
+MOVE_COST=0.1           # Energy cost per movement
+SPEED_FACTOR=2.0        # Movement speed multiplier
+MUTATION_RATE=0.1       # Probability of weight mutation
+MUTATION_STRENGTH=0.2   # Strength of mutation noise
+REPRODUCE_THRESHOLD=150 # Energy required to reproduce
+HTTP_PORT=8080          # Server port
+DB_PATH=./database.db   # SQLite path
 ```
 
-## 🛠️ Технологии
+## 🛠️ Tech Stack
 
 - **Backend**: Go 1.25+, Gorilla WebSocket
 - **Frontend**: Vanilla JS, HTML5 Canvas
-- **База данных**: SQLite
-- **Инфраструктура**: Docker, Caddy
+- **Database**: SQLite
+- **Infrastructure**: Docker, Caddy
 
 ## 📝 API
 
@@ -99,7 +104,7 @@ DB_PATH=database.db     # Путь к SQLite
 ws://localhost:8080/ws
 ```
 
-Сервер отправляет состояние мира 60 раз в секунду:
+The server sends world state 60 times per second:
 
 ```json
 {
@@ -112,14 +117,14 @@ ws://localhost:8080/ws
 }
 ```
 
-## 📸 Снимки состояния
+## 💾 State Snapshots
 
-Состояние симуляции автоматически сохраняется в SQLite каждые 15 минут.
+Simulation state is automatically saved to SQLite every 15 minutes.
 
-## 📄 Лицензия
+## 📄 License
 
 MIT
 
 ---
 
-**Создано с ❤️ на Go**
+**Made with ❤️ in Go**
