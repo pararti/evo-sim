@@ -1,0 +1,41 @@
+# AGENTS.md - internal documentation for AI agents
+AGENTS.md
+
+# Environment variables
+.env
+
+# Database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/bin/
+/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Docker volumes
+/data/
+/config/
+
+# Temporary files
+/tmp/
+/temp/

@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evosim-app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./database.db:/app/database.db
+    ports:
+      - "8080:8080"
+
+  caddy:
+    image: caddy:latest
+    container_name: evosim-caddy
+    restart: unless-stopped
+    ports:
+      - "8089:80"
+      - "4443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EvoKakSim: Neural Network Evolution</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="hud">
+    <div class="header">
+        <h1>EVO KaK<span class="highlight">SIM</span></h1>
+        <div class="status-indicator" id="connection-status"></div>
+    </div>
+
+    <div class="stats-panel">
+        <div class="stat-row">
+            <span class="label">Alive:</span>
+            <span class="value" id="stat-alive">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="label">Food:</span>
+            <span class="value" id="stat-food">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="label">FPS:</span>
+            <span class="value" id="stat-fps">0</span>
+        </div>
+    </div>
+</div>
+
+<canvas id="sim-canvas"></canvas>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
