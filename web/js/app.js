@@ -1,4 +1,4 @@
-import { Renderer } from './components/renderer.js';
+import { Renderer } from './components/render.js';
 
 
 const renderer = new Renderer('sim-canvas');
