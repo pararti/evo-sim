@@ -24,8 +24,12 @@ export class Renderer {
 
         this.ctx.scale(dpr, dpr);
 
-        const scaleX = parent.clientWidth / this.worldWidth;
-        const scaleY = parent.clientHeight / this.worldHeight;
+        const padding = 40; // Total padding (20px each side)
+        const availableW = parent.clientWidth - padding;
+        const availableH = parent.clientHeight - padding;
+
+        const scaleX = availableW / this.worldWidth;
+        const scaleY = availableH / this.worldHeight;
         this.scaleFactor = Math.min(scaleX, scaleY);
 
         this.offsetX = (parent.clientWidth - (this.worldWidth * this.scaleFactor)) / 2;

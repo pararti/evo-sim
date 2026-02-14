@@ -42,7 +42,7 @@ func Load() *Config {
 		FoodEnergy:         getEnvAsFloat("FOOD_ENERGY", 70.0),
 		MoveCost:           getEnvAsFloat("MOVE_COST", 0.05),
 		SpeedFactor:        getEnvAsFloat("SPEED_FACTOR", 1.5),
-		InputSize:          getEnvAsInt("INPUT_SIZE", 6),
+		InputSize:          getEnvAsInt("INPUT_SIZE", 10),
 		HiddenSize:         getEnvAsInt("HIDDEN_SIZE", 4),
 		OutputSize:         getEnvAsInt("OUTPUT_SIZE", 2),
 		EatRadius:          getEnvAsFloat("EAT_RADIUS", 10.0),

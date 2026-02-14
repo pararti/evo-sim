@@ -56,11 +56,6 @@ func (w *World) Update() {
 	w.Mu.Lock()
 	defer w.Mu.Unlock()
 
-	// Rescue population if it's too low
-	if len(w.Creatures) < 10 {
-		w.spawnRandomCreatures(5)
-	}
-
 	// Rebuild grid for spatial optimization
 	w.Grid.Clear()
 	for _, c := range w.Creatures {
@@ -113,10 +108,15 @@ func (w *World) Update() {
 	}
 
 	w.Creatures = append(w.Creatures, newChildren...)
+
+	// Rescue population if it's too low (Check AFTER processing deaths and births)
+	if len(w.Creatures) < 10 {
+		w.spawnRandomCreatures(5)
+	}
 }
 
 func (w *World) updateCreature(c *entity.Creature, fx, fy, tx, ty, roleVal float64) {
-	c.Update(fx, fy, tx, ty, roleVal, w.Cfg.SpeedFactor, w.Cfg.MoveCost)
+	c.Update(fx, fy, tx, ty, roleVal, w.Cfg.SpeedFactor, w.Cfg.MoveCost, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
 
 	// World boundaries
 	if c.X < 0 { c.X = 0 }

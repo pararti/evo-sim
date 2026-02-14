@@ -25,26 +25,32 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 		X:           x,
 		Y:           y,
 		Energy:      100.0,
-		IsCarnivore: false, // Default to herbivore
-		Size:        1.0,   // Base size
+		IsCarnivore: rand.Float64() < 0.2, // 20% chance to be born a carnivore
+		Size:        0.8 + rand.Float64()*0.4, // Random size [0.8, 1.2]
 		Age:         0,
 		Brain:       net,
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, speedCof, energyLoss float64) {
-	// New expanded input: 
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, speedCof, energyLoss, worldW, worldH float64) {
+	// Normalized Inputs [-1, 1]
 	// 1-2: relative food pos
-	// 3-4: relative creature/threat pos
-	// 5: current energy
-	// 6: is the target a carnivore? (1.0 or -1.0)
+	// 3-4: relative creature pos
+	// 5: current energy (normalized to ~200 max)
+	// 6: target role
+	// 7-10: distances to walls (Left, Right, Top, Bottom)
+	
 	input := []float64{
-		foodX - c.X,
-		foodY - c.Y,
-		enemyX - c.X,
-		enemyY - c.Y,
-		c.Energy,
+		(foodX - c.X) / worldW,
+		(foodY - c.Y) / worldH,
+		(enemyX - c.X) / worldW,
+		(enemyY - c.Y) / worldH,
+		c.Energy / 100.0,
 		targetIsCarnivore,
+		c.X / worldW,             // Dist to left
+		(worldW - c.X) / worldW,  // Dist to right
+		c.Y / worldH,             // Dist to top
+		(worldH - c.Y) / worldH,  // Dist to bottom
 	}
 
 	output := c.Brain.FeedForward(input)
@@ -76,15 +82,17 @@ func (c *Creature) Reproduce(mutationRate, mutationStrength float64) *Creature {
 	}
 
 	// Mutation of biological traits
-	if rand.Float64() < mutationRate {
-		// Toggle carnivore role
+	if rand.Float64() < 0.1 { // 10% chance to mutate role
 		child.IsCarnivore = !child.IsCarnivore
 	}
 	if rand.Float64() < mutationRate {
 		// Change size slightly
-		child.Size += (rand.Float64() - 0.5) * 0.2
+		child.Size += (rand.Float64() - 0.5) * 0.1
 		if child.Size < 0.5 {
 			child.Size = 0.5
+		}
+		if child.Size > 2.0 {
+			child.Size = 2.0
 		}
 	}
 
