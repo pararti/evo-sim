@@ -81,9 +81,9 @@ func initWeights(rows, cols int) [][]float64 {
 	w := make([][]float64, rows)
 	for i := range w {
 		w[i] = make([]float64, cols)
-		//random weights init
+		//random weights init in range [-1, 1]
 		for j := range w[i] {
-			w[i][j] = rand.Float64()
+			w[i][j] = rand.Float64()*2.0 - 1.0
 		}
 	}
 	return w
