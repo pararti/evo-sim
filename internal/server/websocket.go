@@ -36,12 +36,12 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		creaturesCount := len(s.World.Creatures)
 		foodCount := len(s.World.Food)
 
-		// (2 bytes header) + (N * 10 bytes) + (2 bytes header) + (M * 8 bytes)
-		packetSize := 2 + (creaturesCount * 10) + 2 + (foodCount * 8)
+		// (2 bytes header) + (N * 15 bytes) + (2 bytes header) + (M * 8 bytes)
+		packetSize := 2 + (creaturesCount * 15) + 2 + (foodCount * 8)
 		buf := make([]byte, packetSize)
 		offset := 0
 
-		// === CREATOR SECTION ===
+		// === CREATURE SECTION ===
 		binary.LittleEndian.PutUint16(buf[offset:], uint16(creaturesCount))
 		offset += 2
 
@@ -49,11 +49,20 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			// ID
 			binary.LittleEndian.PutUint16(buf[offset:], uint16(c.ID))
 			offset += 2
-			// X
+			// X, Y
 			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.X)))
 			offset += 4
-			// Y
 			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.Y)))
+			offset += 4
+			// IsCarnivore (1 byte)
+			if c.IsCarnivore {
+				buf[offset] = 1
+			} else {
+				buf[offset] = 0
+			}
+			offset += 1
+			// Size (4 bytes)
+			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.Size)))
 			offset += 4
 		}
 

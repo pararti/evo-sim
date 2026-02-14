@@ -47,28 +47,44 @@ export class Renderer {
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(0, 0, this.worldWidth, this.worldHeight);
 
-        this.ctx.shadowBlur = 10;
-        this.ctx.shadowColor = '#ff0055';
-        this.ctx.fillStyle = '#ff0055';
+        // Render Food
+        this.ctx.shadowBlur = 8;
+        this.ctx.shadowColor = '#ffe100';
+        this.ctx.fillStyle = '#ffe100';
 
         if (state.food) {
             for (let i = 0; i < state.food.length; i++) {
                 const f = state.food[i];
                 this.ctx.beginPath();
-                this.ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
+                this.ctx.arc(f.x, f.y, 3, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         }
 
-        this.ctx.shadowColor = '#00ff9d';
-        this.ctx.fillStyle = '#00ff9d';
-
+        // Render Creatures
         if (state.creatures) {
             for (let i = 0; i < state.creatures.length; i++) {
                 const c = state.creatures[i];
+                
+                if (c.isCarnivore) {
+                    this.ctx.shadowColor = '#ff4d4d';
+                    this.ctx.fillStyle = '#ff4d4d';
+                } else {
+                    this.ctx.shadowColor = '#00ff9d';
+                    this.ctx.fillStyle = '#00ff9d';
+                }
+
+                const radius = 5 * (c.size || 1.0);
                 this.ctx.beginPath();
-                this.ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
+                this.ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
                 this.ctx.fill();
+                
+                // Optional: border for carnivores
+                if (c.isCarnivore) {
+                    this.ctx.strokeStyle = '#fff';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                }
             }
         }
 
