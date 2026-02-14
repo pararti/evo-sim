@@ -109,7 +109,7 @@ func (w *World) Update() {
 
 	w.Creatures = append(w.Creatures, newChildren...)
 
-	// Rescue population if it's too low (Check AFTER processing deaths and births)
+	// Rescue population logic MUST be outside the loop!
 	if len(w.Creatures) < 10 {
 		w.spawnRandomCreatures(5)
 	}
