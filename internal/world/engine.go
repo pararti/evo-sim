@@ -20,26 +20,29 @@ type World struct {
 func NewWorld(cfg *config.Config) *World {
 	w := &World{
 		Cfg:  cfg,
-		Grid: NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0), // 40px cell size
+		Grid: NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
 	}
-    // ... rest of NewWorld
 
-	for i := 0; i < cfg.InitialPop; i++ {
-		w.Creatures = append(w.Creatures, entity.NewCreature(
-			i,
-			rand.Float64()*cfg.WorldWidth,
-			rand.Float64()*cfg.WorldHeight,
-			cfg.InputSize,
-			cfg.HiddenSize,
-			cfg.OutputSize,
-		))
-	}
+	w.spawnRandomCreatures(cfg.InitialPop)
 
 	for i := 0; i < cfg.FoodCount; i++ {
 		w.spawnFood()
 	}
 
 	return w
+}
+
+func (w *World) spawnRandomCreatures(count int) {
+	for i := 0; i < count; i++ {
+		w.Creatures = append(w.Creatures, entity.NewCreature(
+			rand.IntN(1000000),
+			rand.Float64()*w.Cfg.WorldWidth,
+			rand.Float64()*w.Cfg.WorldHeight,
+			w.Cfg.InputSize,
+			w.Cfg.HiddenSize,
+			w.Cfg.OutputSize,
+		))
+	}
 }
 
 func (w *World) spawnFood() {
@@ -52,6 +55,11 @@ func (w *World) spawnFood() {
 func (w *World) Update() {
 	w.Mu.Lock()
 	defer w.Mu.Unlock()
+
+	// Rescue population if it's too low
+	if len(w.Creatures) < 10 {
+		w.spawnRandomCreatures(5)
+	}
 
 	// Rebuild grid for spatial optimization
 	w.Grid.Clear()
@@ -67,7 +75,7 @@ func (w *World) Update() {
 	for i := len(w.Creatures) - 1; i >= 0; i-- {
 		c := w.Creatures[i]
 
-		// 1. Find targets using Grid (look within 200px radius for performance/relevance)
+		// 1. Find targets
 		foodX, foodY, foodDist := w.findNearestFood(c)
 		targetX, targetY, targetDist, isTargetCarnivore := w.findNearestCreature(c)
 
@@ -122,8 +130,8 @@ func (w *World) findNearestCreature(c *entity.Creature) (float64, float64, float
 	var nx, ny float64
 	var isCarnivore bool
 
-	// Query nearby cells (radius 150.0 is enough for most interactions)
-	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, 150.0)
+	// Query nearby cells
+	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, 300.0)
 
 	for _, cell := range cells {
 		for _, other := range cell {
@@ -142,7 +150,6 @@ func (w *World) findNearestCreature(c *entity.Creature) (float64, float64, float
 }
 
 func (w *World) getCreatureAt(x, y float64) *entity.Creature {
-	// Precise lookup still needs care, but with Grid we can narrow it down
 	cells, _ := w.Grid.GetNeighbors(x, y, 5.0)
 	for _, cell := range cells {
 		for _, c := range cell {
@@ -167,7 +174,8 @@ func (w *World) findNearestFood(c *entity.Creature) (float64, float64, float64) 
 	minDist := math.MaxFloat64
 	var nearestX, nearestY float64
 
-	_, foodCells := w.Grid.GetNeighbors(c.X, c.Y, 200.0)
+	// 1. Spatial lookup
+	_, foodCells := w.Grid.GetNeighbors(c.X, c.Y, 300.0)
 
 	for _, cell := range foodCells {
 		for _, f := range cell {
@@ -180,9 +188,16 @@ func (w *World) findNearestFood(c *entity.Creature) (float64, float64, float64) 
 		}
 	}
 	
-	// If no food nearby, return far away point
+	// 2. Global fallback
 	if minDist == math.MaxFloat64 {
-		return -1000, -1000, minDist
+		for _, f := range w.Food {
+			dist := math.Hypot(f.X-c.X, f.Y-c.Y)
+			if dist < minDist {
+				minDist = dist
+				nearestX = f.X
+				nearestY = f.Y
+			}
+		}
 	}
 
 	return nearestX, nearestY, minDist
@@ -191,10 +206,8 @@ func (w *World) findNearestFood(c *entity.Creature) (float64, float64, float64) 
 func (w *World) eatFood(x, y float64) {
 	for i, f := range w.Food {
 		if f.X == x && f.Y == y {
-			//Delete food
 			w.Food[i] = w.Food[len(w.Food)-1]
 			w.Food = w.Food[:len(w.Food)-1]
-
 			w.spawnFood()
 			return
 		}
