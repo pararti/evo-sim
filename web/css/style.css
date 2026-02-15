@@ -91,6 +91,12 @@ canvas {
     padding-bottom: 10px;
 }
 
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
 h1 {
     margin: 0;
     font-size: 1.2rem;
@@ -134,15 +140,6 @@ h1 {
     font-weight: bold;
 }
 
-.footer {
-    margin-top: 15px;
-    padding-top: 10px;
-    border-top: 1px solid #333;
-    display: flex;
-    justify-content: center;
-    pointer-events: auto;
-}
-
 .github-link {
     display: flex;
     align-items: center;
@@ -151,6 +148,7 @@ h1 {
     text-decoration: none;
     font-size: 0.8rem;
     transition: color 0.2s;
+    pointer-events: auto;
 }
 
 .github-link:hover {
@@ -173,15 +171,11 @@ h1 {
         border: none;
         border-top: 1px solid #333;
         padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         gap: 5px;
-    }
-
-    .footer {
-        margin-top: 5px;
-        padding-top: 5px;
     }
 
     .header {
@@ -191,6 +185,10 @@ h1 {
     
     h1 {
         font-size: 1rem;
+    }
+
+    .title-group {
+        gap: 10px;
     }
 
     /* Hide verbose description on mobile */

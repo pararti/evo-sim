@@ -9,7 +9,7 @@ const uiFps = document.getElementById('stat-fps');
 const uiUptime = document.getElementById('stat-uptime');
 const uiStatus = document.getElementById('connection-status');
 
-const startTime = Date.now();
+let startTime = Date.now();
 
 
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -24,8 +24,11 @@ let frameCount = 0;
 fetch('/api/map')
     .then(res => res.json())
     .then(data => {
-        console.log("Map data loaded:", data);
-        renderer.setMap(data);
+        console.log("Map and simulation data loaded:", data);
+        if (data.startTime) {
+            startTime = data.startTime;
+        }
+        renderer.setMap(data.terrain);
     })
     .catch(err => console.error("Failed to load map:", err));
 

@@ -4,6 +4,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"sync"
+	"time"
 
 	"evo-sim/internal/config"
 	"evo-sim/internal/entity"
@@ -16,13 +17,15 @@ type World struct {
 	Grid      *Grid
 	Terrain   *TerrainGrid
 	Mu        sync.RWMutex
+	StartTime time.Time
 }
 
 func NewWorld(cfg *config.Config) *World {
 	w := &World{
-		Cfg:     cfg,
-		Grid:    NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
-		Terrain: NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
+		Cfg:       cfg,
+		Grid:      NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
+		Terrain:   NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
+		StartTime: time.Now(),
 	}
 
 	w.spawnRandomCreatures(cfg.InitialPop)

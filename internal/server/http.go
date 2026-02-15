@@ -31,5 +31,13 @@ func (s *Server) handleMap(w http.ResponseWriter, r *http.Request) {
 	s.World.Mu.RLock()
 	defer s.World.Mu.RUnlock()
 
-	json.NewEncoder(w).Encode(s.World.Terrain)
+	response := struct {
+		Terrain   *world.TerrainGrid `json:"terrain"`
+		StartTime int64              `json:"startTime"` // Unix timestamp in milliseconds
+	}{
+		Terrain:   s.World.Terrain,
+		StartTime: s.World.StartTime.UnixMilli(),
+	}
+
+	json.NewEncoder(w).Encode(response)
 }
