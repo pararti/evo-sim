@@ -9,24 +9,29 @@ import (
 )
 
 type Config struct {
-	HTTPPort           string
-	DBPath             string
-	WorldWidth         float64
-	WorldHeight        float64
-	InitialPop         int
-	FoodCount          int
-	FoodEnergy         float64
-	MoveCost           float64
-	SpeedFactor        float64
-	InputSize          int
-	HiddenSize         int
-	OutputSize         int
-	EatRadius          float64
-	MutationRate       float64
-	MutationStrength   float64
+	HTTPPort             string
+	DBPath               string
+	WorldWidth           float64
+	WorldHeight          float64
+	InitialPop           int
+	FoodCount            int
+	FoodEnergy           float64
+	MoveCost             float64
+	SpeedFactor          float64
+	InputSize            int
+	HiddenSize           int
+	OutputSize           int
+	EatRadius            float64
+	MutationRate         float64
+	MutationStrength     float64
 	ReproduceThreshold   float64
 	AsexualThresholdMult float64
 	MaxAge               float64
+
+	// Ecosystem Control
+	FoodSpawnChance    float64
+	CrowdingDistance   float64
+	CrowdingMultiplier float64
 
 	SpeciationThreshold     float64
 	MatingDistanceThreshold float64
@@ -38,24 +43,29 @@ func Load() *Config {
 	}
 
 	return &Config{
-		HTTPPort:           getEnv("HTTP_PORT", "8080"),
-		DBPath:             getEnv("DB_PATH", "./database.db"),
-		WorldWidth:         getEnvAsFloat("WORLD_WIDTH", 800.0),
-		WorldHeight:        getEnvAsFloat("WORLD_HEIGHT", 600.0),
-		InitialPop:         getEnvAsInt("INITIAL_POP", 20),
-		FoodCount:          getEnvAsInt("FOOD_COUNT", 50),
-		FoodEnergy:         getEnvAsFloat("FOOD_ENERGY", 70.0),
-		MoveCost:           getEnvAsFloat("MOVE_COST", 0.05),
-		SpeedFactor:        getEnvAsFloat("SPEED_FACTOR", 1.5),
-		InputSize:          getEnvAsInt("INPUT_SIZE", 10),
-		HiddenSize:         getEnvAsInt("HIDDEN_SIZE", 4),
-		OutputSize:         getEnvAsInt("OUTPUT_SIZE", 2),
-		EatRadius:          getEnvAsFloat("EAT_RADIUS", 10.0),
-		MutationRate:       getEnvAsFloat("MUTATION_RATE", 0.1),
-		MutationStrength:   getEnvAsFloat("MUTATION_STRENGTH", 0.2),
+		HTTPPort:             getEnv("HTTP_PORT", "8080"),
+		DBPath:               getEnv("DB_PATH", "./database.db"),
+		WorldWidth:           getEnvAsFloat("WORLD_WIDTH", 800.0),
+		WorldHeight:          getEnvAsFloat("WORLD_HEIGHT", 600.0),
+		InitialPop:           getEnvAsInt("INITIAL_POP", 20),
+		FoodCount:            getEnvAsInt("FOOD_COUNT", 50),
+		FoodEnergy:           getEnvAsFloat("FOOD_ENERGY", 70.0),
+		MoveCost:             getEnvAsFloat("MOVE_COST", 0.05),
+		SpeedFactor:          getEnvAsFloat("SPEED_FACTOR", 1.5),
+		InputSize:            getEnvAsInt("INPUT_SIZE", 10),
+		HiddenSize:           getEnvAsInt("HIDDEN_SIZE", 4),
+		OutputSize:           getEnvAsInt("OUTPUT_SIZE", 2),
+		EatRadius:            getEnvAsFloat("EAT_RADIUS", 10.0),
+		MutationRate:         getEnvAsFloat("MUTATION_RATE", 0.1),
+		MutationStrength:     getEnvAsFloat("MUTATION_STRENGTH", 0.2),
 		ReproduceThreshold:   getEnvAsFloat("REPRODUCE_THRESHOLD", 150.0),
 		AsexualThresholdMult: getEnvAsFloat("ASEXUAL_THRESHOLD_MULT", 1.5),
 		MaxAge:               getEnvAsFloat("MAX_AGE", 10000.0),
+
+		FoodSpawnChance:    getEnvAsFloat("FOOD_SPAWN_CHANCE", 0.05), // ~3 food/sec at 60fps
+		CrowdingDistance:   getEnvAsFloat("CROWDING_DISTANCE", 50.0),
+		CrowdingMultiplier: getEnvAsFloat("CROWDING_MULTIPLIER", 0.1), // +10% BMR per neighbor
+
 		SpeciationThreshold:     getEnvAsFloat("SPECIATION_THRESHOLD", 1.0),
 		MatingDistanceThreshold: getEnvAsFloat("MATING_DISTANCE_THRESHOLD", 0.5),
 	}

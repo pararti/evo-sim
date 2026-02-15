@@ -7,11 +7,11 @@ import (
 )
 
 type Creature struct {
-	ID     int
-	SpeciesID int // Tracks the evolutionary lineage
+	ID         int
+	SpeciesID  int // Tracks the evolutionary lineage
 	Generation int
-	X, Y   float64
-	Energy float64
+	X, Y       float64
+	Energy     float64
 
 	// Phenotype (derived from Genome)
 	Size                  float64
@@ -38,12 +38,12 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn := genome.CalculateStats()
 
 	return &Creature{
-		ID:     id,
-		SpeciesID: 0, // Will be assigned by World
+		ID:         id,
+		SpeciesID:  0, // Will be assigned by World
 		Generation: 1,
-		X:      x,
-		Y:      y,
-		Energy: maxEnergy * 0.5, // Start with 50% max energy
+		X:          x,
+		Y:          y,
+		Energy:     maxEnergy * 0.5, // Start with 50% max energy
 
 		Size:                  genome.SizeGene, // Using SizeGene directly as visual size for now
 		Mass:                  mass,
@@ -60,7 +60,7 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH, maxAge float64) {
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH, maxAge, stressFactor float64) {
 	// Inputs normalized relative to ViewRadius where possible
 	// 1-2: relative food pos
 	// 3-4: relative creature pos
@@ -112,7 +112,9 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terra
 	ageRatio := float64(c.Age) / maxAge
 	agingFactor := 1.0 + (ageRatio * ageRatio)
 
-	c.Energy -= (c.BMR * agingFactor) + movementCost
+	// Stress Factor (Crowding): Increases BMR if overcrowded.
+	// 1.0 = No stress. >1.0 = Higher BMR.
+	c.Energy -= (c.BMR * agingFactor * stressFactor) + movementCost
 
 	// Cap energy at MaxEnergy
 	if c.Energy > c.MaxEnergy {
@@ -133,12 +135,12 @@ func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Cre
 	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn := childGenome.CalculateStats()
 
 	child := &Creature{
-		ID:     0, // To be assigned by world
-		SpeciesID: c.SpeciesID,
+		ID:         0, // To be assigned by world
+		SpeciesID:  c.SpeciesID,
 		Generation: c.Generation + 1,
-		X:      c.X,
-		Y:      c.Y,
-		Energy: c.Energy / 2, // Parent gives half energy
+		X:          c.X,
+		Y:          c.Y,
+		Energy:     c.Energy / 2, // Parent gives half energy
 
 		Size:                  childGenome.SizeGene,
 		Mass:                  mass,

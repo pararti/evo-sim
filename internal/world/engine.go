@@ -11,23 +11,27 @@ import (
 )
 
 type World struct {
-	Cfg       *config.Config
-	Creatures []*entity.Creature
-	Food      []entity.Food
-	Grid      *Grid
-	Terrain   *TerrainGrid
+	Cfg            *config.Config
+	Creatures      []*entity.Creature
+	Food           []entity.Food
+	Grid           *Grid
+	Terrain        *TerrainGrid
 	SpeciesManager *SpeciesManager
-	Mu        sync.RWMutex
-	StartTime time.Time
+	Mu             sync.RWMutex
+	StartTime      time.Time
+
+	// Control Logic
+	FoodSpawnAccumulator float64
 }
 
 func NewWorld(cfg *config.Config) *World {
 	w := &World{
-		Cfg:            cfg,
-		Grid:           NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
-		Terrain:        NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
-		SpeciesManager: NewSpeciesManager(cfg.SpeciationThreshold),
-		StartTime:      time.Now(),
+		Cfg:                  cfg,
+		Grid:                 NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
+		Terrain:              NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
+		SpeciesManager:       NewSpeciesManager(cfg.SpeciationThreshold),
+		StartTime:            time.Now(),
+		FoodSpawnAccumulator: 0.0,
 	}
 
 	w.spawnRandomCreatures(cfg.InitialPop)
@@ -62,7 +66,7 @@ func (w *World) spawnRandomCreatures(count int) {
 
 func (w *World) spawnFood() {
 	var x, y float64
-	
+
 	// Try to find a good spot (Grass preferred)
 	for i := 0; i < 10; i++ {
 		// 70% chance to spawn in the "Oasis" (center 40% of the world)
@@ -124,16 +128,35 @@ func (w *World) Update() {
 
 		// Update Brain
 		roleVal := -1.0
-		if isTargetCarnivore { roleVal = 1.0 }
+		if isTargetCarnivore {
+			roleVal = 1.0
+		}
 
 		// Get Terrain Physics
 		speedFactor, energyCostFactor := w.Terrain.GetMovementPenalty(c.X, c.Y)
-		
-		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight, w.Cfg.MaxAge)
+
+		// Calculate Crowding Stress
+		neighbors := 0
+		w.Grid.ForEachNeighbor(c.X, c.Y, w.Cfg.CrowdingDistance, func(other *entity.Creature) {
+			if other.ID != c.ID && !deadCreatures[other.ID] {
+				neighbors++
+			}
+		}, nil)
+		stressFactor := 1.0 + float64(neighbors)*w.Cfg.CrowdingMultiplier
+
+		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight, w.Cfg.MaxAge, stressFactor)
 
 		// Boundaries
-		if c.X < 0 { c.X = 0 } else if c.X > w.Cfg.WorldWidth { c.X = w.Cfg.WorldWidth }
-		if c.Y < 0 { c.Y = 0 } else if c.Y > w.Cfg.WorldHeight { c.Y = w.Cfg.WorldHeight }
+		if c.X < 0 {
+			c.X = 0
+		} else if c.X > w.Cfg.WorldWidth {
+			c.X = w.Cfg.WorldWidth
+		}
+		if c.Y < 0 {
+			c.Y = 0
+		} else if c.Y > w.Cfg.WorldHeight {
+			c.Y = w.Cfg.WorldHeight
+		}
 
 		// Interactions
 		if !c.IsCarnivore && foodID != -1 && foodDist < w.Cfg.EatRadius*c.Size {
@@ -188,7 +211,7 @@ func (w *World) Update() {
 	}
 	w.Creatures = append(newCreatureList, newChildren...)
 
-	// Remove eaten food and respawn
+	// Remove eaten food
 	newFoodList := make([]entity.Food, 0, len(w.Food))
 	for _, f := range w.Food {
 		if !eatenFood[f.ID] {
@@ -196,8 +219,12 @@ func (w *World) Update() {
 		}
 	}
 	w.Food = newFoodList
-	for len(w.Food) < w.Cfg.FoodCount {
+
+	// Dynamic Food Spawning (Entropy control)
+	w.FoodSpawnAccumulator += w.Cfg.FoodSpawnChance
+	for w.FoodSpawnAccumulator >= 1.0 {
 		w.spawnFood()
+		w.FoodSpawnAccumulator -= 1.0
 	}
 
 	// 4. Rescue population
@@ -257,7 +284,7 @@ func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64
 	// But to prevent total extinction of "blind" early gens, maybe keep a small "smell" range?
 	// For now, let's remove the global fallback to strictly enforce ViewRadius.
 	// This makes "SenseGene" actually valuable.
-	
+
 	return nx, ny, minDist, fid
 }
 

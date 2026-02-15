@@ -11,18 +11,31 @@ Unlike simple genetic algorithms, this project focuses on **Thermodynamics** and
 
 ## Key Features
 
-### Genotype vs Phenotype
-Creatures are not born random; they are built from a **Genome** that mutates over generations.
-- **Size Gene**: Determines mass and health. Larger creatures are stronger but need more food (Square-Cube Law).
-- **Speed Gene**: Determines muscle density. Fast creatures can catch prey but burn energy rapidly.
-- **Sense Gene**: Determines visual range. Better vision helps find food but brains consume more energy.
-- **Diet Gene**: Determines placement on the Carnivore-Herbivore spectrum.
+### 🧬 Advanced Genetics & Epistasis
+Creatures possess a complex **Genome** where traits are not 1:1 with genes but interact via **Epistasis**:
+- **Constitution Gene**: Affects bone density and health. High constitution increases max energy but significantly increases mass (slowing movement).
+- **Metabolism Gene**: Determines how fast energy is converted to work. High metabolism boosts speed but burns calories rapidly (Red Queen hypothesis).
+- **Fertility Gene**: Controls reproductive strategy (r/K selection). High fertility allows earlier reproduction but produces weaker offspring.
+- **Physical Traits**: Size, Speed, Sense, Diet, and Color (for lineage visualization).
 
-### Thermodynamics & BMR
-The simulation enforces a strict energy budget via **Basal Metabolic Rate (BMR)**.
-- **Living Cost**: `BMR = f(Mass, BrainSize, SpeedPotential)`.
-- **Movement Cost**: Moving through water or sand requires more work ($W = F \cdot d$).
-- **Evolutionary Pressure**: Inefficient creatures (e.g., huge body with small mouth) starve and die out.
+### 🔬 Speciation & Phylogeny
+The simulation tracks evolutionary divergence in real-time.
+- **Genetic Distance**: Species are defined by clustering genomes based on Euclidean distance in high-dimensional gene space.
+- **Reproductive Isolation**: Creatures can only reproduce with genetically similar mates, leading to distinct species branches.
+- **Visual Cladogram**: Lineages evolve distinct color patterns, making speciation visible on the map.
+
+### 📉 Thermodynamics & Gradient Aging
+Energy is the fundamental currency.
+- **Basal Metabolic Rate (BMR)**: `BMR = f(Mass, BrainComplexity, SpeedPotential)`.
+- **Gradient Aging**: Instead of a sudden death at `MaxAge`, creatures experience **Senescence**. Energy efficiency drops quadratically with age ($Cost \propto Age^2$), forcing older creatures to eat more or die.
+- **Physics**: Movement cost is strictly $W = F \cdot d$. Moving through water or sand incurs heavy penalties.
+
+### 🧠 Neural Network & Crossover
+Each creature is controlled by a Feed-Forward Neural Network that evolves over time.
+- **Inputs**: Vector to nearest food/enemy, terrain type underfoot, internal energy levels, and pheromones/smell.
+- **Outputs**: Velocity vector (X, Y) driving movement.
+- **Sexual Reproduction**: Offspring inherit a mix of brain weights and biases from two parents (Crossover) plus random mutations.
+- **Asexual Reproduction**: Cloning with mutation for rapid colonization.
 
 ### Procedural Terrain & Biomes
 The world is generated using **Perlin Noise** and divided into biomes:
@@ -30,11 +43,6 @@ The world is generated using **Perlin Noise** and divided into biomes:
 2.  **Sand**: Medium movement penalty.
 3.  **Grass**: Normal speed. Food grows here abundantly.
 
-### Neural Network Brain
-Each creature makes decisions using a mutable Feed-Forward Neural Network.
-- **Inputs**: Vector to food/enemy, terrain type underfoot, internal energy, smell.
-- **Outputs**: Velocity vector (X, Y).
-- **Neuro-Evolution**: Brain weights mutate along with physical genes.
 
 ## Quick Start
 
