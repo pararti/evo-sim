@@ -20,6 +20,15 @@ let socket;
 let lastFrameTime = performance.now();
 let frameCount = 0;
 
+// Fetch static map data
+fetch('/api/map')
+    .then(res => res.json())
+    .then(data => {
+        console.log("Map data loaded:", data);
+        renderer.setMap(data);
+    })
+    .catch(err => console.error("Failed to load map:", err));
+
 function connect() {
     console.log(`Connecting to ${wsUrl}...`);
     socket = new WebSocket(wsUrl);

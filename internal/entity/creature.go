@@ -50,7 +50,7 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, worldW, worldH float64) {
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH float64) {
 	// Inputs normalized relative to ViewRadius where possible
 	// 1-2: relative food pos
 	// 3-4: relative creature pos
@@ -79,8 +79,11 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, world
 
 	// Movement
 	// Output is [-1, 1]. Speed is max speed.
-	dx := output[0] * c.Speed
-	dy := output[1] * c.Speed
+	// Apply terrain penalty
+	currentMaxSpeed := c.Speed * terrainSpeedFactor
+	
+	dx := output[0] * currentMaxSpeed
+	dy := output[1] * currentMaxSpeed
 	
 	c.X += dx
 	c.Y += dy
@@ -88,8 +91,9 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, world
 	// Energy Calculation (Thermodynamics)
 	// 1. Basal Metabolic Rate (Living cost)
 	// 2. Movement Cost (Work = Force * Distance). F = ma. Heavier creatures spend more energy moving.
+	// 3. Terrain Resistance (Mud/Water makes it harder)
 	movementDist := math.Sqrt(dx*dx + dy*dy)
-	movementCost := movementDist * (c.Size * c.Size) * 0.1 // Mass ~ Size^2
+	movementCost := movementDist * (c.Size * c.Size) * 0.1 * terrainEnergyFactor // Mass ~ Size^2
 
 	c.Energy -= (c.BMR + movementCost)
 	

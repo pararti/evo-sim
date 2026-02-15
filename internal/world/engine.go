@@ -14,13 +14,15 @@ type World struct {
 	Creatures []*entity.Creature
 	Food      []entity.Food
 	Grid      *Grid
+	Terrain   *TerrainGrid
 	Mu        sync.RWMutex
 }
 
 func NewWorld(cfg *config.Config) *World {
 	w := &World{
-		Cfg:  cfg,
-		Grid: NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
+		Cfg:     cfg,
+		Grid:    NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
+		Terrain: NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
 	}
 
 	w.spawnRandomCreatures(cfg.InitialPop)
@@ -33,30 +35,49 @@ func NewWorld(cfg *config.Config) *World {
 
 func (w *World) spawnRandomCreatures(count int) {
 	for i := 0; i < count; i++ {
-		w.Creatures = append(w.Creatures, entity.NewCreature(
-			rand.IntN(10000000),
-			rand.Float64()*w.Cfg.WorldWidth,
-			rand.Float64()*w.Cfg.WorldHeight,
-			w.Cfg.InputSize,
-			w.Cfg.HiddenSize,
-			w.Cfg.OutputSize,
-		))
+		// Try to spawn on land
+		for attempt := 0; attempt < 5; attempt++ {
+			x := rand.Float64() * w.Cfg.WorldWidth
+			y := rand.Float64() * w.Cfg.WorldHeight
+			if w.Terrain.GetType(x, y) != Water {
+				w.Creatures = append(w.Creatures, entity.NewCreature(
+					rand.IntN(10000000),
+					x, y,
+					w.Cfg.InputSize,
+					w.Cfg.HiddenSize,
+					w.Cfg.OutputSize,
+				))
+				break
+			}
+		}
 	}
 }
 
 func (w *World) spawnFood() {
 	var x, y float64
 	
-	// 70% chance to spawn in the "Oasis" (center 40% of the world)
-	// 30% chance to spawn anywhere else (the "Wastelands")
-	if rand.Float64() < 0.7 {
-		marginW := w.Cfg.WorldWidth * 0.3
-		marginH := w.Cfg.WorldHeight * 0.3
-		x = marginW + rand.Float64()*(w.Cfg.WorldWidth*0.4)
-		y = marginH + rand.Float64()*(w.Cfg.WorldHeight*0.4)
-	} else {
-		x = rand.Float64() * w.Cfg.WorldWidth
-		y = rand.Float64() * w.Cfg.WorldHeight
+	// Try to find a good spot (Grass preferred)
+	for i := 0; i < 10; i++ {
+		// 70% chance to spawn in the "Oasis" (center 40% of the world)
+		if rand.Float64() < 0.7 {
+			marginW := w.Cfg.WorldWidth * 0.3
+			marginH := w.Cfg.WorldHeight * 0.3
+			x = marginW + rand.Float64()*(w.Cfg.WorldWidth*0.4)
+			y = marginH + rand.Float64()*(w.Cfg.WorldHeight*0.4)
+		} else {
+			x = rand.Float64() * w.Cfg.WorldWidth
+			y = rand.Float64() * w.Cfg.WorldHeight
+		}
+
+		// Food grows best on Grass, okay on Sand, never on Water
+		tile := w.Terrain.GetType(x, y)
+		if tile == Grass {
+			break // Good spot
+		}
+		if tile == Sand && rand.Float64() < 0.2 {
+			break // Rare cactus?
+		}
+		// If Water, retry
 	}
 
 	w.Food = append(w.Food, entity.Food{
@@ -97,7 +118,10 @@ func (w *World) Update() {
 		roleVal := -1.0
 		if isTargetCarnivore { roleVal = 1.0 }
 
-		c.Update(foodX, foodY, targetX, targetY, roleVal, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
+		// Get Terrain Physics
+		speedFactor, energyCostFactor := w.Terrain.GetMovementPenalty(c.X, c.Y)
+		
+		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
 
 		// Boundaries
 		if c.X < 0 { c.X = 0 } else if c.X > w.Cfg.WorldWidth { c.X = w.Cfg.WorldWidth }

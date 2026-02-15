@@ -36,10 +36,52 @@ export class Renderer {
         this.offsetY = (parent.clientHeight - (this.worldHeight * this.scaleFactor)) / 2;
     }
 
+    setMap(mapData) {
+        this.terrainCanvas = document.createElement('canvas');
+        this.terrainCanvas.width = this.worldWidth;
+        this.terrainCanvas.height = this.worldHeight;
+        const tCtx = this.terrainCanvas.getContext('2d');
+
+        const w = mapData.Width;
+        const h = mapData.Height;
+        const scale = mapData.Scale;
+        
+        // Decode Base64 string to Uint8Array if necessary
+        let cells = mapData.Cells;
+        if (typeof cells === 'string') {
+            const binaryString = atob(cells);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            cells = bytes;
+        }
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const type = cells[y * w + x];
+                const px = x * scale;
+                const py = y * scale;
+
+                // 0: Water, 1: Sand, 2: Grass
+                if (type === 0) {
+                    tCtx.fillStyle = '#1a3c6e'; // Deep Water
+                } else if (type === 1) {
+                    tCtx.fillStyle = '#e6c288'; // Sand
+                } else {
+                    tCtx.fillStyle = '#2d6e32'; // Grass
+                }
+                
+                tCtx.fillRect(px, py, scale, scale);
+            }
+        }
+    }
+
     render(state) {
         if (!state) return;
 
-        this.ctx.fillStyle = 'rgba(11, 13, 20, 0.35)';
+        this.ctx.fillStyle = '#111'; // Fallback bg
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.ctx.save();
@@ -47,17 +89,15 @@ export class Renderer {
         this.ctx.translate(this.offsetX, this.offsetY);
         this.ctx.scale(this.scaleFactor, this.scaleFactor);
 
-        this.ctx.strokeStyle = '#333';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(0, 0, this.worldWidth, this.worldHeight);
-
-        // Draw Oasis zone
-        this.ctx.fillStyle = 'rgba(0, 255, 100, 0.05)';
-        const oW = this.worldWidth * 0.4;
-        const oH = this.worldHeight * 0.4;
-        this.ctx.fillRect(this.worldWidth * 0.3, this.worldHeight * 0.3, oW, oH);
-        this.ctx.strokeStyle = 'rgba(0, 255, 100, 0.1)';
-        this.ctx.strokeRect(this.worldWidth * 0.3, this.worldHeight * 0.3, oW, oH);
+        // Draw Terrain (Cached)
+        if (this.terrainCanvas) {
+            this.ctx.drawImage(this.terrainCanvas, 0, 0);
+        } else {
+            // Draw border if no map yet
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(0, 0, this.worldWidth, this.worldHeight);
+        }
 
         // Render Food
         this.ctx.shadowBlur = 8;
