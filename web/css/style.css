@@ -134,6 +134,33 @@ h1 {
     font-weight: bold;
 }
 
+.footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+    display: flex;
+    justify-content: center;
+    pointer-events: auto;
+}
+
+.github-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: color 0.2s;
+}
+
+.github-link:hover {
+    color: var(--highlight-color);
+}
+
+.github-link svg {
+    fill: currentColor;
+}
+
 /* Mobile Adaptation */
 @media (max-width: 768px) {
     .hud {
@@ -150,6 +177,11 @@ h1 {
         display: flex;
         flex-direction: column;
         gap: 5px;
+    }
+
+    .footer {
+        margin-top: 5px;
+        padding-top: 5px;
     }
 
     .header {

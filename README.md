@@ -1,5 +1,7 @@
 # 🧬 EvoKakSim — Advanced Artificial Life Simulation
 
+[GitHub Repository](https://github.com/pararti/evo-sim)
+
 EvoKakSim is a high-performance evolutionary simulation written in **Go**. It models an ecosystem where creatures with unique **Genomes** and **Neural Networks** evolve to survive in a dynamic environment with distinct **Biomes**.
 
 Unlike simple genetic algorithms, this project focuses on **Thermodynamics** and **Physical Constraints**: nothing is free, every advantage (speed, size, brain power) has an energy cost.
