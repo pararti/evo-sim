@@ -51,6 +51,14 @@ export class Renderer {
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(0, 0, this.worldWidth, this.worldHeight);
 
+        // Draw Oasis zone
+        this.ctx.fillStyle = 'rgba(0, 255, 100, 0.05)';
+        const oW = this.worldWidth * 0.4;
+        const oH = this.worldHeight * 0.4;
+        this.ctx.fillRect(this.worldWidth * 0.3, this.worldHeight * 0.3, oW, oH);
+        this.ctx.strokeStyle = 'rgba(0, 255, 100, 0.1)';
+        this.ctx.strokeRect(this.worldWidth * 0.3, this.worldHeight * 0.3, oW, oH);
+
         // Render Food
         this.ctx.shadowBlur = 8;
         this.ctx.shadowColor = '#ffe100';

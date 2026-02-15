@@ -45,10 +45,24 @@ func (w *World) spawnRandomCreatures(count int) {
 }
 
 func (w *World) spawnFood() {
+	var x, y float64
+	
+	// 70% chance to spawn in the "Oasis" (center 40% of the world)
+	// 30% chance to spawn anywhere else (the "Wastelands")
+	if rand.Float64() < 0.7 {
+		marginW := w.Cfg.WorldWidth * 0.3
+		marginH := w.Cfg.WorldHeight * 0.3
+		x = marginW + rand.Float64()*(w.Cfg.WorldWidth*0.4)
+		y = marginH + rand.Float64()*(w.Cfg.WorldHeight*0.4)
+	} else {
+		x = rand.Float64() * w.Cfg.WorldWidth
+		y = rand.Float64() * w.Cfg.WorldHeight
+	}
+
 	w.Food = append(w.Food, entity.Food{
 		ID: rand.IntN(10000000),
-		X:  rand.Float64() * w.Cfg.WorldWidth,
-		Y:  rand.Float64() * w.Cfg.WorldHeight,
+		X:  x,
+		Y:  y,
 	})
 }
 
@@ -82,7 +96,15 @@ func (w *World) Update() {
 		// Update Brain
 		roleVal := -1.0
 		if isTargetCarnivore { roleVal = 1.0 }
-		c.Update(foodX, foodY, targetX, targetY, roleVal, w.Cfg.SpeedFactor, w.Cfg.MoveCost, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
+
+		// Zone-based metabolism: higher cost in the center
+		localLoss := w.Cfg.MoveCost
+		distToCenter := math.Hypot(c.X-w.Cfg.WorldWidth/2, c.Y-w.Cfg.WorldHeight/2)
+		if distToCenter < w.Cfg.WorldWidth*0.2 {
+			localLoss *= 1.5 // 50% more energy cost in the oasis
+		}
+
+		c.Update(foodX, foodY, targetX, targetY, roleVal, w.Cfg.SpeedFactor, localLoss, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
 
 		// Boundaries
 		if c.X < 0 { c.X = 0 } else if c.X > w.Cfg.WorldWidth { c.X = w.Cfg.WorldWidth }
