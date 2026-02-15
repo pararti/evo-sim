@@ -150,13 +150,13 @@ func (w *World) Update() {
 		}
 
 		// Reproduction
-		if c.Energy > w.Cfg.ReproduceThreshold && !matedThisTick[c.ID] {
+		if c.Energy > c.ReproductionThreshold && !matedThisTick[c.ID] {
 			mate := w.findMate(c, deadCreatures, matedThisTick)
 			var child *entity.Creature
 			if mate != nil {
 				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength)
 				matedThisTick[mate.ID] = true
-			} else if c.Energy > w.Cfg.ReproduceThreshold*w.Cfg.AsexualThresholdMult {
+			} else if c.Energy > c.ReproductionThreshold*w.Cfg.AsexualThresholdMult {
 				child = c.ReproduceAsexual(w.Cfg.MutationRate, w.Cfg.MutationStrength)
 			}
 			if child != nil {
@@ -266,7 +266,7 @@ func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.C
 			if other.ID == c.ID || dead[other.ID] || mated[other.ID] {
 				continue
 			}
-			if other.Energy <= w.Cfg.ReproduceThreshold {
+			if other.Energy <= other.ReproductionThreshold {
 				continue
 			}
 			if other.IsCarnivore != c.IsCarnivore {

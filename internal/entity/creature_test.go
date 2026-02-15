@@ -10,33 +10,41 @@ import (
 func TestCreature_ReproduceSexual(t *testing.T) {
 	// Create two parent creatures with known positions and energy
 	p1 := &Creature{
-		ID:          1,
-		X:           100.0,
-		Y:           200.0,
-		Energy:      300.0,
-		Size:        1.0,
-		Speed:       1.0,
-		ViewRadius:  100.0,
-		BMR:         0.1,
-		IsCarnivore: false,
+		ID:                    1,
+		X:                     100.0,
+		Y:                     200.0,
+		Energy:                300.0,
+		Size:                  1.0,
+		Mass:                  1.0,
+		Speed:                 1.0,
+		ViewRadius:            100.0,
+		BMR:                   0.1,
+		MaxEnergy:             1000.0,
+		ReproductionThreshold: 500.0,
+		IsCarnivore:           false,
 		Genome: Genome{
 			SizeGene: 1.0, SpeedGene: 1.0, SenseGene: 100.0, DietGene: 0.2,
+			MetabolismGene: 1.0, FertilityGene: 0.5, ConstitutionGene: 1.0,
 			ColorR: 0.0, ColorG: 1.0, ColorB: 0.0,
 		},
 		Brain: brain.NewNetwork(10, 6, 2),
 	}
 	p2 := &Creature{
-		ID:          2,
-		X:           120.0,
-		Y:           220.0,
-		Energy:      240.0,
-		Size:        1.5,
-		Speed:       0.8,
-		ViewRadius:  120.0,
-		BMR:         0.15,
-		IsCarnivore: false,
+		ID:                    2,
+		X:                     120.0,
+		Y:                     220.0,
+		Energy:                240.0,
+		Size:                  1.5,
+		Mass:                  2.25,
+		Speed:                 0.8,
+		ViewRadius:            120.0,
+		BMR:                   0.15,
+		MaxEnergy:             2000.0,
+		ReproductionThreshold: 1000.0,
+		IsCarnivore:           false,
 		Genome: Genome{
 			SizeGene: 1.5, SpeedGene: 0.8, SenseGene: 120.0, DietGene: 0.3,
+			MetabolismGene: 1.0, FertilityGene: 0.5, ConstitutionGene: 1.0,
 			ColorR: 0.0, ColorG: 0.5, ColorB: 0.5,
 		},
 		Brain: brain.NewNetwork(10, 6, 2),
@@ -79,5 +87,13 @@ func TestCreature_ReproduceSexual(t *testing.T) {
 	}
 	if child.Age != 0 {
 		t.Errorf("Child age: got %d, want 0", child.Age)
+	}
+	
+	// Check that child has Mass and other new fields populated
+	if child.Mass <= 0 {
+		t.Errorf("Child mass should be positive, got %f", child.Mass)
+	}
+	if child.MaxEnergy <= 0 {
+		t.Errorf("Child MaxEnergy should be positive, got %f", child.MaxEnergy)
 	}
 }
