@@ -5,11 +5,16 @@ import (
 	"evo-sim/internal/entity"
 )
 
+type Cell struct {
+	Creatures []*entity.Creature
+	Food      []entity.Food
+}
+
 type Grid struct {
 	cellSize float64
-	cols, rows int
-	creatureCells [][][]*entity.Creature
-	foodCells     [][][]entity.Food
+	cols     int
+	rows     int
+	cells    []Cell
 }
 
 func NewGrid(width, height, cellSize float64) *Grid {
@@ -20,20 +25,23 @@ func NewGrid(width, height, cellSize float64) *Grid {
 		cellSize: cellSize,
 		cols:     cols,
 		rows:     rows,
+		cells:    make([]Cell, cols*rows),
 	}
-	g.Clear()
+	
+	// Pre-allocate inner slices to avoid initial resizing churn
+	for i := range g.cells {
+		g.cells[i].Creatures = make([]*entity.Creature, 0, 16)
+		g.cells[i].Food = make([]entity.Food, 0, 16)
+	}
+	
 	return g
 }
 
 func (g *Grid) Clear() {
-	g.creatureCells = make([][][]*entity.Creature, g.cols)
-	for i := range g.creatureCells {
-		g.creatureCells[i] = make([][]*entity.Creature, g.rows)
-	}
-
-	g.foodCells = make([][][]entity.Food, g.cols)
-	for i := range g.foodCells {
-		g.foodCells[i] = make([][]entity.Food, g.rows)
+	// Reset slices without deallocating memory
+	for i := range g.cells {
+		g.cells[i].Creatures = g.cells[i].Creatures[:0]
+		g.cells[i].Food = g.cells[i].Food[:0]
 	}
 }
 
@@ -42,7 +50,8 @@ func (g *Grid) InsertCreature(c *entity.Creature) {
 	row := int(c.Y / g.cellSize)
 
 	if col >= 0 && col < g.cols && row >= 0 && row < g.rows {
-		g.creatureCells[col][row] = append(g.creatureCells[col][row], c)
+		index := row*g.cols + col
+		g.cells[index].Creatures = append(g.cells[index].Creatures, c)
 	}
 }
 
@@ -51,10 +60,12 @@ func (g *Grid) InsertFood(f entity.Food) {
 	row := int(f.Y / g.cellSize)
 
 	if col >= 0 && col < g.cols && row >= 0 && row < g.rows {
-		g.foodCells[col][row] = append(g.foodCells[col][row], f)
+		index := row*g.cols + col
+		g.cells[index].Food = append(g.cells[index].Food, f)
 	}
 }
 
+// GetNeighbors returns flattened lists of entities in the radius
 func (g *Grid) GetNeighbors(x, y float64, radius float64) ([][]*entity.Creature, [][]entity.Food) {
 	colStart := int((x - radius) / g.cellSize)
 	colEnd := int((x + radius) / g.cellSize)
@@ -67,16 +78,25 @@ func (g *Grid) GetNeighbors(x, y float64, radius float64) ([][]*entity.Creature,
 	if rowStart < 0 { rowStart = 0 }
 	if rowEnd >= g.rows { rowEnd = g.rows - 1 }
 
+	// Optimization: We could pre-allocate these result buffers too if needed, 
+	// but for now, let's keep the signature. 
+	// The return type is slightly awkward for 1D grid ([][]...), 
+	// but changing it requires refactoring Engine too much. 
+	// We will return a slice of slices to maintain API compatibility with Engine.
+	
 	var cResults [][]*entity.Creature
 	var fResults [][]entity.Food
 
-	for c := colStart; c <= colEnd; c++ {
-		for r := rowStart; r <= rowEnd; r++ {
-			if len(g.creatureCells[c][r]) > 0 {
-				cResults = append(cResults, g.creatureCells[c][r])
+	for r := rowStart; r <= rowEnd; r++ {
+		for c := colStart; c <= colEnd; c++ {
+			index := r*g.cols + c
+			cell := &g.cells[index]
+			
+			if len(cell.Creatures) > 0 {
+				cResults = append(cResults, cell.Creatures)
 			}
-			if len(g.foodCells[c][r]) > 0 {
-				fResults = append(fResults, g.foodCells[c][r])
+			if len(cell.Food) > 0 {
+				fResults = append(fResults, cell.Food)
 			}
 		}
 	}

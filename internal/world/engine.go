@@ -97,14 +97,7 @@ func (w *World) Update() {
 		roleVal := -1.0
 		if isTargetCarnivore { roleVal = 1.0 }
 
-		// Zone-based metabolism: higher cost in the center
-		localLoss := w.Cfg.MoveCost
-		distToCenter := math.Hypot(c.X-w.Cfg.WorldWidth/2, c.Y-w.Cfg.WorldHeight/2)
-		if distToCenter < w.Cfg.WorldWidth*0.2 {
-			localLoss *= 1.5 // 50% more energy cost in the oasis
-		}
-
-		c.Update(foodX, foodY, targetX, targetY, roleVal, w.Cfg.SpeedFactor, localLoss, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
+		c.Update(foodX, foodY, targetX, targetY, roleVal, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
 
 		// Boundaries
 		if c.X < 0 { c.X = 0 } else if c.X > w.Cfg.WorldWidth { c.X = w.Cfg.WorldWidth }
@@ -183,14 +176,16 @@ func (w *World) findNearestCreature(c *entity.Creature, dead map[int]bool) (floa
 	var targetID = -1
 	var isCarnivore bool
 
-	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, 300.0)
+	// Use creature's view radius, but clamp it to reasonable grid lookup limits if needed
+	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
 	for _, cell := range cells {
 		for _, other := range cell {
 			if other.ID == c.ID || dead[other.ID] {
 				continue
 			}
 			dist := math.Hypot(other.X-c.X, other.Y-c.Y)
-			if dist < minDist {
+			// Only see things within ViewRadius
+			if dist < c.ViewRadius && dist < minDist {
 				minDist, nx, ny, targetID, isCarnivore = dist, other.X, other.Y, other.ID, other.IsCarnivore
 			}
 		}
@@ -204,25 +199,21 @@ func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64
 	var fid = -1
 
 	// 1. Spatial
-	_, foodCells := w.Grid.GetNeighbors(c.X, c.Y, 300.0)
+	_, foodCells := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
 	for _, cell := range foodCells {
 		for _, f := range cell {
 			if eaten[f.ID] { continue }
 			dist := math.Hypot(f.X-c.X, f.Y-c.Y)
-			if dist < minDist {
+			if dist < c.ViewRadius && dist < minDist {
 				minDist, nx, ny, fid = dist, f.X, f.Y, f.ID
 			}
 		}
 	}
-	// 2. Global Fallback
-	if fid == -1 {
-		for _, f := range w.Food {
-			if eaten[f.ID] { continue }
-			dist := math.Hypot(f.X-c.X, f.Y-c.Y)
-			if dist < minDist {
-				minDist, nx, ny, fid = dist, f.X, f.Y, f.ID
-			}
-		}
-	}
+	// 2. Global Fallback (only if no spatial result found? Or remove global fallback to enforce blindness?)
+	// To make evolution real, if they can't see it, they can't find it.
+	// But to prevent total extinction of "blind" early gens, maybe keep a small "smell" range?
+	// For now, let's remove the global fallback to strictly enforce ViewRadius.
+	// This makes "SenseGene" actually valuable.
+	
 	return nx, ny, minDist, fid
 }

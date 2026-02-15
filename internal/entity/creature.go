@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"math/rand/v2"
+	"math"
 
 	"evo-sim/internal/brain"
 )
@@ -10,59 +10,89 @@ type Creature struct {
 	ID          int
 	X, Y        float64
 	Energy      float64
-	IsCarnivore bool
+	
+	// Phenotype (derived from Genome)
 	Size        float64
+	Speed       float64
+	ViewRadius  float64
+	IsCarnivore bool
+	BMR         float64 // Basal Metabolic Rate (energy cost per tick)
+
 	Age         int
 
-	Brain *brain.Network
+	// Genotype
+	Genome Genome
+	Brain  *brain.Network
 }
 
 func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *Creature {
 	net := brain.NewNetwork(inputSize, hiddenSize, outputSize)
+	genome := NewRandomGenome()
+	
+	// Calculate Phenotype from Genotype
+	mass, speed, view, bmr, isCarn := genome.CalculateStats()
 
 	return &Creature{
 		ID:          id,
 		X:           x,
 		Y:           y,
-		Energy:      100.0,
-		IsCarnivore: rand.Float64() < 0.2, // 20% chance to be born a carnivore
-		Size:        0.8 + rand.Float64()*0.4, // Random size [0.8, 1.2]
-		Age:         0,
-		Brain:       net,
+		Energy:      100.0 + (mass * 10), // Larger creatures start with more energy reserves
+		
+		Size:        genome.SizeGene, // Using SizeGene directly as visual size for now
+		Speed:       speed,
+		ViewRadius:  view,
+		BMR:         bmr,
+		IsCarnivore: isCarn,
+
+		Age:    0,
+		Genome: genome,
+		Brain:  net,
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, speedCof, energyLoss, worldW, worldH float64) {
-	// Normalized Inputs [-1, 1]
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, worldW, worldH float64) {
+	// Inputs normalized relative to ViewRadius where possible
 	// 1-2: relative food pos
 	// 3-4: relative creature pos
-	// 5: current energy (normalized to ~200 max)
+	// 5: current energy 
 	// 6: target role
-	// 7-10: distances to walls (Left, Right, Top, Bottom)
+	// 7-10: distances to walls
+	
+	// Normalize distance by ViewRadius to allow evolution of sensing range
+	// If things are outside ViewRadius, inputs should be 0 (simulated by caller or here)
+	// For now, we keep global normalization but scaled 
 	
 	input := []float64{
-		(foodX - c.X) / worldW,
-		(foodY - c.Y) / worldH,
-		(enemyX - c.X) / worldW,
-		(enemyY - c.Y) / worldH,
-		c.Energy / 100.0,
+		(foodX - c.X) / c.ViewRadius,
+		(foodY - c.Y) / c.ViewRadius,
+		(enemyX - c.X) / c.ViewRadius,
+		(enemyY - c.Y) / c.ViewRadius,
+		c.Energy / 200.0,
 		targetIsCarnivore,
-		c.X / worldW,             // Dist to left
-		(worldW - c.X) / worldW,  // Dist to right
-		c.Y / worldH,             // Dist to top
-		(worldH - c.Y) / worldH,  // Dist to bottom
+		c.X / worldW,             
+		(worldW - c.X) / worldW,  
+		c.Y / worldH,             
+		(worldH - c.Y) / worldH,  
 	}
 
 	output := c.Brain.FeedForward(input)
 
-	// Metabolic cost depends on size and speed
-	actualSpeed := speedCof / (c.Size * 0.5) // Larger creatures are slightly slower
-	c.X += output[0] * actualSpeed
-	c.Y += output[1] * actualSpeed
+	// Movement
+	// Output is [-1, 1]. Speed is max speed.
+	dx := output[0] * c.Speed
+	dy := output[1] * c.Speed
 	
-	// Energy loss: base + movement + size penalty
-	movement := (output[0]*output[0] + output[1]*output[1]) * 0.05
-	c.Energy -= energyLoss + movement + (c.Size * 0.02)
+	c.X += dx
+	c.Y += dy
+	
+	// Energy Calculation (Thermodynamics)
+	// 1. Basal Metabolic Rate (Living cost)
+	// 2. Movement Cost (Work = Force * Distance). F = ma. Heavier creatures spend more energy moving.
+	movementDist := math.Sqrt(dx*dx + dy*dy)
+	movementCost := movementDist * (c.Size * c.Size) * 0.1 // Mass ~ Size^2
+
+	c.Energy -= (c.BMR + movementCost)
+	
 	c.Age++
 }
 
@@ -70,30 +100,27 @@ func (c *Creature) Reproduce(mutationRate, mutationStrength float64) *Creature {
 	childBrain := c.Brain.Clone()
 	childBrain.Mutate(mutationRate, mutationStrength)
 
+	// Mutate Genome
+	childGenome := c.Genome.Mutate(mutationRate, mutationStrength)
+	
+	// Calculate new Phenotype
+	_, speed, view, bmr, isCarn := childGenome.CalculateStats()
+
 	child := &Creature{
-		ID:          0,
+		ID:          0, // To be assigned by world
 		X:           c.X,
 		Y:           c.Y,
-		Energy:      c.Energy / 2,
-		IsCarnivore: c.IsCarnivore,
-		Size:        c.Size,
+		Energy:      c.Energy / 2, // Parent gives half energy
+		
+		Size:        childGenome.SizeGene,
+		Speed:       speed,
+		ViewRadius:  view,
+		BMR:         bmr,
+		IsCarnivore: isCarn,
+		
 		Age:         0,
+		Genome:      childGenome,
 		Brain:       childBrain,
-	}
-
-	// Mutation of biological traits
-	if rand.Float64() < 0.1 { // 10% chance to mutate role
-		child.IsCarnivore = !child.IsCarnivore
-	}
-	if rand.Float64() < mutationRate {
-		// Change size slightly
-		child.Size += (rand.Float64() - 0.5) * 0.1
-		if child.Size < 0.5 {
-			child.Size = 0.5
-		}
-		if child.Size > 2.0 {
-			child.Size = 2.0
-		}
 	}
 
 	c.Energy /= 2
