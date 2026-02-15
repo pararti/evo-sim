@@ -1,6 +1,5 @@
 your-domain.com {
     reverse_proxy app:8080
 
-    # Включаем сжатие (ускорит загрузку JSON)
     encode gzip
 }
