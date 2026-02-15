@@ -1,15 +1,40 @@
-# 🧬 EvoSim — Neural Network Evolution Simulation
+# 🧬 EvoKakSim — Advanced Artificial Life Simulation
 
-An artificial life simulation where creatures with neural network brains evolve, find food, reproduce, and adapt to their environment through natural selection.
+EvoKakSim is a high-performance evolutionary simulation written in **Go**. It models an ecosystem where creatures with unique **Genomes** and **Neural Networks** evolve to survive in a dynamic environment with distinct **Biomes**.
+
+Unlike simple genetic algorithms, this project focuses on **Thermodynamics** and **Physical Constraints**: nothing is free, every advantage (speed, size, brain power) has an energy cost.
 
 ![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-## 🎥 Demo
+## Key Features
 
-The web interface shows the simulation in real-time: creatures (circles) move toward the nearest food (squares), consume energy, and reproduce when they accumulate enough reserves.
+### Genotype vs Phenotype
+Creatures are not born random; they are built from a **Genome** that mutates over generations.
+- **Size Gene**: Determines mass and health. Larger creatures are stronger but need more food (Square-Cube Law).
+- **Speed Gene**: Determines muscle density. Fast creatures can catch prey but burn energy rapidly.
+- **Sense Gene**: Determines visual range. Better vision helps find food but brains consume more energy.
+- **Diet Gene**: Determines placement on the Carnivore-Herbivore spectrum.
 
-## 🚀 Quick Start
+### Thermodynamics & BMR
+The simulation enforces a strict energy budget via **Basal Metabolic Rate (BMR)**.
+- **Living Cost**: `BMR = f(Mass, BrainSize, SpeedPotential)`.
+- **Movement Cost**: Moving through water or sand requires more work ($W = F \cdot d$).
+- **Evolutionary Pressure**: Inefficient creatures (e.g., huge body with small mouth) starve and die out.
+
+### Procedural Terrain & Biomes
+The world is generated using **Perlin Noise** and divided into biomes:
+1.  **Water**: High movement cost (3x), very slow speed. Safe from non-amphibious predators.
+2.  **Sand**: Medium movement penalty.
+3.  **Grass**: Normal speed. Food grows here abundantly.
+
+### Neural Network Brain
+Each creature makes decisions using a mutable Feed-Forward Neural Network.
+- **Inputs**: Vector to food/enemy, terrain type underfoot, internal energy, smell.
+- **Outputs**: Velocity vector (X, Y).
+- **Neuro-Evolution**: Brain weights mutate along with physical genes.
+
+## Quick Start
 
 ### Local Run
 
@@ -27,104 +52,39 @@ Open http://localhost:8080 in your browser.
 
 ```bash
 # Run with Docker Compose
-docker-compose up -d
-
-# Simulation will be available on port 8080
-# Caddy reverse proxy — on port 8089
+docker compose up -d --build
 ```
 
-## 🧠 Architecture
+## Interface
 
-### Creature Neural Network
+The web interface is optimized for both **Desktop** and **Mobile**:
+- **Real-time Visualization**: HTML5 Canvas rendering at 60 FPS using OffscreenCanvas for performance.
+- **Responsive HUD**: Adapts layout for small screens.
+- **Live Stats**: FPS, Population count, Food abundance.
 
-Each creature is controlled by a **Feed-Forward Neural Network (FFNN)** with three layers:
+## Architecture
 
-| Layer | Description |
-|-------|-------------|
-| **Input** | 3 neurons: vector to nearest food (dx, dy) + energy level |
-| **Hidden** | 4 neurons with Tanh activation function |
-| **Output** | 2 neurons: velocity X and Y |
+### Backend (Go)
+- **Engine**: Custom physics engine with Spatial Partitioning (Grid) to support thousands of entities on low-end hardware (VPS optimized).
+- **Concurrency**: Parallelized update loops and thread-safe data access.
+- **Networking**: Binary WebSocket protocol for minimal latency and bandwidth.
 
-Behavior is completely emergent — no hardcoded logic like "if hungry, go to food".
+### Frontend (Vanilla JS)
+- **Rendering**: Optimized 2D Context with off-screen buffering for static terrain.
+- **Protocol**: Binary parsing (`ArrayBuffer` / `DataView`) of world state.
 
-### Evolution
+## Configuration
 
-- **Reproduction**: When energy > 150, the creature splits in half
-- **Inheritance**: Offspring receives a copy of the parent's weights
-- **Mutation**: 10% of weights are changed with random noise
-- **Selection**: Unlucky creatures die of starvation
+Tune the simulation via environment variables or `config.go`:
 
-## 📁 Project Structure
+| Variable | Description |
+|----------|-------------|
+| `WORLD_WIDTH` | Map width in pixels (e.g., 800) |
+| `WORLD_HEIGHT` | Map height in pixels (e.g., 600) |
+| `INITIAL_POP` | Starting creature count |
+| `MUTATION_RATE` | DNA mutation probability |
+| `FOOD_COUNT` | Max food on map |
 
-```
-.
-├── cmd/app/           # Entry point
-├── internal/
-│   ├── brain/         # Neural network (feed-forward, mutations)
-│   ├── entity/        # Creatures and food
-│   ├── world/         # Game engine and physics
-│   ├── server/        # HTTP + WebSocket server
-│   ├── storage/       # SQLite for state persistence
-│   └── config/        # Configuration
-├── web/               # Frontend (HTML5 Canvas + WebSocket)
-└── docker-compose.yml
-```
-
-## ⚙️ Configuration
-
-Via environment variables (`.env`):
-
-```env
-WORLD_WIDTH=800         # World width
-WORLD_HEIGHT=600        # World height
-INITIAL_POP=20          # Initial creature count
-FOOD_COUNT=50           # Initial food count
-FOOD_ENERGY=50.0        # Energy gained from food
-MOVE_COST=0.1           # Energy cost per movement
-SPEED_FACTOR=2.0        # Movement speed multiplier
-MUTATION_RATE=0.1       # Probability of weight mutation
-MUTATION_STRENGTH=0.2   # Strength of mutation noise
-REPRODUCE_THRESHOLD=150 # Energy required to reproduce
-HTTP_PORT=8080          # Server port
-DB_PATH=./database.db   # SQLite path
-```
-
-## 🛠️ Tech Stack
-
-- **Backend**: Go 1.25+, Gorilla WebSocket
-- **Frontend**: Vanilla JS, HTML5 Canvas
-- **Database**: SQLite
-- **Infrastructure**: Docker, Caddy
-
-## 📝 API
-
-### WebSocket
-
-```
-ws://localhost:8080/ws
-```
-
-The server sends world state 60 times per second:
-
-```json
-{
-  "creatures": [
-    {"id": 1, "x": 100, "y": 200, "energy": 80}
-  ],
-  "food": [
-    {"id": 1, "x": 150, "y": 250}
-  ]
-}
-```
-
-## 💾 State Snapshots
-
-Simulation state is automatically saved to SQLite every 15 minutes.
-
-## 📄 License
+## License
 
 MIT
-
----
-
-**Made with ❤️ in Go**
