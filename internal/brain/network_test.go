@@ -8,17 +8,13 @@ func TestNetwork_Crossover(t *testing.T) {
 	n2 := NewNetwork(3, 2, 1)
 
 	// Set all weights to distinguishable values
-	for i := range n1.Weights1 {
-		for j := range n1.Weights1[i] {
-			n1.Weights1[i][j] = -1.0
-			n2.Weights1[i][j] = 1.0
-		}
+	for i := range n1.weights1 {
+		n1.weights1[i] = -1.0
+		n2.weights1[i] = 1.0
 	}
-	for i := range n1.Weights2 {
-		for j := range n1.Weights2[i] {
-			n1.Weights2[i][j] = -1.0
-			n2.Weights2[i][j] = 1.0
-		}
+	for i := range n1.weights2 {
+		n1.weights2[i] = -1.0
+		n2.weights2[i] = 1.0
 	}
 
 	sawParent1 := false
@@ -27,22 +23,20 @@ func TestNetwork_Crossover(t *testing.T) {
 		child := n1.Crossover(n2)
 
 		// Verify dimensions match
-		if len(child.Weights1) != len(n1.Weights1) {
-			t.Fatalf("Weights1 row count mismatch")
+		if len(child.weights1) != len(n1.weights1) {
+			t.Fatalf("weights1 count mismatch")
 		}
 
-		for i := range child.Weights1 {
-			for j := range child.Weights1[i] {
-				w := child.Weights1[i][j]
-				if w != -1.0 && w != 1.0 {
-					t.Fatalf("Child weight %f is neither parent", w)
-				}
-				if w == -1.0 {
-					sawParent1 = true
-				}
-				if w == 1.0 {
-					sawParent2 = true
-				}
+		for i := range child.weights1 {
+			w := child.weights1[i]
+			if w != -1.0 && w != 1.0 {
+				t.Fatalf("Child weight %f is neither parent", w)
+			}
+			if w == -1.0 {
+				sawParent1 = true
+			}
+			if w == 1.0 {
+				sawParent2 = true
 			}
 		}
 	}

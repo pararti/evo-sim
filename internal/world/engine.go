@@ -222,19 +222,17 @@ func (w *World) findNearestCreature(c *entity.Creature, dead map[int]bool) (floa
 	var isCarnivore bool
 
 	// Use creature's view radius, but clamp it to reasonable grid lookup limits if needed
-	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
-	for _, cell := range cells {
-		for _, other := range cell {
-			if other.ID == c.ID || dead[other.ID] {
-				continue
-			}
-			dist := math.Hypot(other.X-c.X, other.Y-c.Y)
-			// Only see things within ViewRadius
-			if dist < c.ViewRadius && dist < minDist {
-				minDist, nx, ny, targetID, isCarnivore = dist, other.X, other.Y, other.ID, other.IsCarnivore
-			}
+	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, func(other *entity.Creature) {
+		if other.ID == c.ID || dead[other.ID] {
+			return
 		}
-	}
+		dist := math.Hypot(other.X-c.X, other.Y-c.Y)
+		// Only see things within ViewRadius
+		if dist < c.ViewRadius && dist < minDist {
+			minDist, nx, ny, targetID, isCarnivore = dist, other.X, other.Y, other.ID, other.IsCarnivore
+		}
+	}, nil)
+
 	return nx, ny, minDist, targetID, isCarnivore
 }
 
@@ -244,16 +242,16 @@ func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64
 	var fid = -1
 
 	// 1. Spatial
-	_, foodCells := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
-	for _, cell := range foodCells {
-		for _, f := range cell {
-			if eaten[f.ID] { continue }
-			dist := math.Hypot(f.X-c.X, f.Y-c.Y)
-			if dist < c.ViewRadius && dist < minDist {
-				minDist, nx, ny, fid = dist, f.X, f.Y, f.ID
-			}
+	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, nil, func(f entity.Food) {
+		if eaten[f.ID] {
+			return
 		}
-	}
+		dist := math.Hypot(f.X-c.X, f.Y-c.Y)
+		if dist < c.ViewRadius && dist < minDist {
+			minDist, nx, ny, fid = dist, f.X, f.Y, f.ID
+		}
+	})
+
 	// 2. Global Fallback (only if no spatial result found? Or remove global fallback to enforce blindness?)
 	// To make evolution real, if they can't see it, they can't find it.
 	// But to prevent total extinction of "blind" early gens, maybe keep a small "smell" range?
@@ -264,30 +262,28 @@ func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64
 }
 
 func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.Creature {
-	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
 	var best *entity.Creature
 	bestDist := math.MaxFloat64
 
-	for _, cell := range cells {
-		for _, other := range cell {
-			if other.ID == c.ID || dead[other.ID] || mated[other.ID] {
-				continue
-			}
-			if other.Energy <= other.ReproductionThreshold {
-				continue
-			}
-			if other.IsCarnivore != c.IsCarnivore {
-				continue
-			}
-			if c.Genome.Distance(other.Genome) > w.Cfg.MatingDistanceThreshold {
-				continue
-			}
-			dist := math.Hypot(other.X-c.X, other.Y-c.Y)
-			if dist < c.ViewRadius && dist < w.Cfg.EatRadius*c.Size && dist < bestDist {
-				bestDist = dist
-				best = other
-			}
+	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, func(other *entity.Creature) {
+		if other.ID == c.ID || dead[other.ID] || mated[other.ID] {
+			return
 		}
-	}
+		if other.Energy <= other.ReproductionThreshold {
+			return
+		}
+		if other.IsCarnivore != c.IsCarnivore {
+			return
+		}
+		if c.Genome.Distance(other.Genome) > w.Cfg.MatingDistanceThreshold {
+			return
+		}
+		dist := math.Hypot(other.X-c.X, other.Y-c.Y)
+		if dist < c.ViewRadius && dist < w.Cfg.EatRadius*c.Size && dist < bestDist {
+			bestDist = dist
+			best = other
+		}
+	}, nil)
+
 	return best
 }

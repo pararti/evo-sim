@@ -65,8 +65,8 @@ func (g *Grid) InsertFood(f entity.Food) {
 	}
 }
 
-// GetNeighbors returns flattened lists of entities in the radius
-func (g *Grid) GetNeighbors(x, y float64, radius float64) ([][]*entity.Creature, [][]entity.Food) {
+// ForEachNeighbor iterates over entities in the radius without allocating return slices.
+func (g *Grid) ForEachNeighbor(x, y, radius float64, creatureFunc func(*entity.Creature), foodFunc func(entity.Food)) {
 	colStart := int((x - radius) / g.cellSize)
 	colEnd := int((x + radius) / g.cellSize)
 	rowStart := int((y - radius) / g.cellSize)
@@ -78,28 +78,21 @@ func (g *Grid) GetNeighbors(x, y float64, radius float64) ([][]*entity.Creature,
 	if rowStart < 0 { rowStart = 0 }
 	if rowEnd >= g.rows { rowEnd = g.rows - 1 }
 
-	// Optimization: We could pre-allocate these result buffers too if needed, 
-	// but for now, let's keep the signature. 
-	// The return type is slightly awkward for 1D grid ([][]...), 
-	// but changing it requires refactoring Engine too much. 
-	// We will return a slice of slices to maintain API compatibility with Engine.
-	
-	var cResults [][]*entity.Creature
-	var fResults [][]entity.Food
-
 	for r := rowStart; r <= rowEnd; r++ {
 		for c := colStart; c <= colEnd; c++ {
 			index := r*g.cols + c
 			cell := &g.cells[index]
 			
-			if len(cell.Creatures) > 0 {
-				cResults = append(cResults, cell.Creatures)
+			if creatureFunc != nil {
+				for _, cr := range cell.Creatures {
+					creatureFunc(cr)
+				}
 			}
-			if len(cell.Food) > 0 {
-				fResults = append(fResults, cell.Food)
+			if foodFunc != nil {
+				for _, f := range cell.Food {
+					foodFunc(f)
+				}
 			}
 		}
 	}
-
-	return cResults, fResults
 }

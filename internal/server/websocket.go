@@ -30,6 +30,10 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ticker := time.NewTicker(33 * time.Millisecond)
 	defer ticker.Stop()
 
+	// Pre-allocate a buffer with reasonable initial size (e.g., for 500 creatures + 500 food)
+	// 500 * 18 + 500 * 8 + 4 = 13004 bytes. Let's start with 16KB.
+	buf := make([]byte, 16384)
+
 	for range ticker.C {
 		s.World.Mu.RLock()
 
@@ -38,57 +42,63 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		// (2 bytes header) + (N * 18 bytes) + (2 bytes header) + (M * 8 bytes)
 		packetSize := 2 + (creaturesCount * 18) + 2 + (foodCount * 8)
-		buf := make([]byte, packetSize)
+		
+		// Resize buffer if needed
+		if cap(buf) < packetSize {
+			buf = make([]byte, packetSize * 2) // Double capacity to avoid frequent reallocations
+		}
+		// Use the slice with correct length
+		packet := buf[:packetSize]
 		offset := 0
 
 		// === CREATURE SECTION ===
-		binary.LittleEndian.PutUint16(buf[offset:], uint16(creaturesCount))
+		binary.LittleEndian.PutUint16(packet[offset:], uint16(creaturesCount))
 		offset += 2
 
 		for _, c := range s.World.Creatures {
 			// ID
-			binary.LittleEndian.PutUint16(buf[offset:], uint16(c.ID))
+			binary.LittleEndian.PutUint16(packet[offset:], uint16(c.ID))
 			offset += 2
 			// X, Y
-			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.X)))
+			binary.LittleEndian.PutUint32(packet[offset:], math.Float32bits(float32(c.X)))
 			offset += 4
-			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.Y)))
+			binary.LittleEndian.PutUint32(packet[offset:], math.Float32bits(float32(c.Y)))
 			offset += 4
 			// IsCarnivore (1 byte)
 			if c.IsCarnivore {
-				buf[offset] = 1
+				packet[offset] = 1
 			} else {
-				buf[offset] = 0
+				packet[offset] = 0
 			}
 			offset += 1
 			// Size (4 bytes)
-			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.Size)))
+			binary.LittleEndian.PutUint32(packet[offset:], math.Float32bits(float32(c.Size)))
 			offset += 4
 			// Color (3 bytes)
-			buf[offset] = uint8(c.Genome.ColorR * 255)
+			packet[offset] = uint8(c.Genome.ColorR * 255)
 			offset++
-			buf[offset] = uint8(c.Genome.ColorG * 255)
+			packet[offset] = uint8(c.Genome.ColorG * 255)
 			offset++
-			buf[offset] = uint8(c.Genome.ColorB * 255)
+			packet[offset] = uint8(c.Genome.ColorB * 255)
 			offset++
 		}
 
 		// === FOOD SECTION ===
-		binary.LittleEndian.PutUint16(buf[offset:], uint16(foodCount))
+		binary.LittleEndian.PutUint16(packet[offset:], uint16(foodCount))
 		offset += 2
 
 		for _, f := range s.World.Food {
 			// X
-			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(f.X)))
+			binary.LittleEndian.PutUint32(packet[offset:], math.Float32bits(float32(f.X)))
 			offset += 4
 			// Y
-			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(f.Y)))
+			binary.LittleEndian.PutUint32(packet[offset:], math.Float32bits(float32(f.Y)))
 			offset += 4
 		}
 
 		s.World.Mu.RUnlock()
 
-		if err := conn.WriteMessage(websocket.BinaryMessage, buf); err != nil {
+		if err := conn.WriteMessage(websocket.BinaryMessage, packet); err != nil {
 			log.Printf("Client disconnected: %v", err)
 			break
 		}
