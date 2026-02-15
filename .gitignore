@@ -1,6 +1,3 @@
-# AGENTS.md - internal documentation for AI agents
-AGENTS.md
-
 # Environment variables
 .env
 
@@ -39,4 +36,3 @@ AGENTS.md
 # Temporary files
 /tmp/
 /temp/
-GEMINI.md
