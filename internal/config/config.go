@@ -24,7 +24,8 @@ type Config struct {
 	EatRadius          float64
 	MutationRate       float64
 	MutationStrength   float64
-	ReproduceThreshold float64
+	ReproduceThreshold   float64
+	AsexualThresholdMult float64
 }
 
 func Load() *Config {
@@ -48,7 +49,8 @@ func Load() *Config {
 		EatRadius:          getEnvAsFloat("EAT_RADIUS", 10.0),
 		MutationRate:       getEnvAsFloat("MUTATION_RATE", 0.1),
 		MutationStrength:   getEnvAsFloat("MUTATION_STRENGTH", 0.2),
-		ReproduceThreshold: getEnvAsFloat("REPRODUCE_THRESHOLD", 150.0),
+		ReproduceThreshold:   getEnvAsFloat("REPRODUCE_THRESHOLD", 150.0),
+		AsexualThresholdMult: getEnvAsFloat("ASEXUAL_THRESHOLD_MULT", 1.5),
 	}
 }
 

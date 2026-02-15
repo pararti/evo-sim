@@ -103,6 +103,7 @@ func (w *World) Update() {
 	var newChildren []*entity.Creature
 	deadCreatures := make(map[int]bool)
 	eatenFood := make(map[int]bool)
+	matedThisTick := make(map[int]bool)
 
 	// 2. Main Simulation Loop
 	for _, c := range w.Creatures {
@@ -145,11 +146,21 @@ func (w *World) Update() {
 			}
 		}
 
-		// Life cycle
-		if c.Energy > w.Cfg.ReproduceThreshold {
-			child := c.Reproduce(w.Cfg.MutationRate, w.Cfg.MutationStrength)
-			child.ID = rand.IntN(10000000)
-			newChildren = append(newChildren, child)
+		// Reproduction
+		if c.Energy > w.Cfg.ReproduceThreshold && !matedThisTick[c.ID] {
+			mate := w.findMate(c, deadCreatures, matedThisTick)
+			var child *entity.Creature
+			if mate != nil {
+				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength)
+				matedThisTick[mate.ID] = true
+			} else if c.Energy > w.Cfg.ReproduceThreshold*w.Cfg.AsexualThresholdMult {
+				child = c.ReproduceAsexual(w.Cfg.MutationRate, w.Cfg.MutationStrength)
+			}
+			if child != nil {
+				child.ID = rand.IntN(10000000)
+				newChildren = append(newChildren, child)
+				matedThisTick[c.ID] = true
+			}
 		}
 
 		if c.Energy <= 0 || c.Age > 10000 {
@@ -240,4 +251,30 @@ func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64
 	// This makes "SenseGene" actually valuable.
 	
 	return nx, ny, minDist, fid
+}
+
+func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.Creature {
+	cells, _ := w.Grid.GetNeighbors(c.X, c.Y, c.ViewRadius)
+	var best *entity.Creature
+	bestDist := math.MaxFloat64
+
+	for _, cell := range cells {
+		for _, other := range cell {
+			if other.ID == c.ID || dead[other.ID] || mated[other.ID] {
+				continue
+			}
+			if other.Energy <= w.Cfg.ReproduceThreshold {
+				continue
+			}
+			if other.IsCarnivore != c.IsCarnivore {
+				continue
+			}
+			dist := math.Hypot(other.X-c.X, other.Y-c.Y)
+			if dist < c.ViewRadius && dist < w.Cfg.EatRadius*c.Size && dist < bestDist {
+				bestDist = dist
+				best = other
+			}
+		}
+	}
+	return best
 }

@@ -72,3 +72,38 @@ func TestGenome_Mutate(t *testing.T) {
 		t.Errorf("Mutation failed to change genome after 100 attempts")
 	}
 }
+
+func TestGenome_Crossover(t *testing.T) {
+	// Two maximally different genomes
+	g1 := Genome{
+		SizeGene: 0.5, SpeedGene: 0.3, SenseGene: 50.0, DietGene: 0.1,
+		ColorR: 0.0, ColorG: 0.0, ColorB: 0.0,
+	}
+	g2 := Genome{
+		SizeGene: 3.5, SpeedGene: 2.8, SenseGene: 450.0, DietGene: 0.9,
+		ColorR: 1.0, ColorG: 1.0, ColorB: 1.0,
+	}
+
+	// Run crossover many times to verify mixing
+	sawG1Size := false
+	sawG2Size := false
+	for i := 0; i < 100; i++ {
+		child := g1.Crossover(g2)
+
+		// Child gene must be exactly one of the two parents
+		if child.SizeGene != g1.SizeGene && child.SizeGene != g2.SizeGene {
+			t.Fatalf("Child SizeGene %f is neither parent1 %f nor parent2 %f",
+				child.SizeGene, g1.SizeGene, g2.SizeGene)
+		}
+		if child.SizeGene == g1.SizeGene {
+			sawG1Size = true
+		}
+		if child.SizeGene == g2.SizeGene {
+			sawG2Size = true
+		}
+	}
+
+	if !sawG1Size || !sawG2Size {
+		t.Errorf("Crossover not mixing: sawG1=%v sawG2=%v", sawG1Size, sawG2Size)
+	}
+}

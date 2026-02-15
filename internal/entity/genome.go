@@ -65,6 +65,25 @@ func (g Genome) Mutate(rate, strength float64) Genome {
 	return ng
 }
 
+// Crossover creates a child genome by picking each gene from a random parent (uniform crossover).
+func (g Genome) Crossover(other Genome) Genome {
+	pick := func(a, b float64) float64 {
+		if rand.Float64() < 0.5 {
+			return a
+		}
+		return b
+	}
+	return Genome{
+		SizeGene:  pick(g.SizeGene, other.SizeGene),
+		SpeedGene: pick(g.SpeedGene, other.SpeedGene),
+		SenseGene: pick(g.SenseGene, other.SenseGene),
+		DietGene:  pick(g.DietGene, other.DietGene),
+		ColorR:    pick(g.ColorR, other.ColorR),
+		ColorG:    pick(g.ColorG, other.ColorG),
+		ColorB:    pick(g.ColorB, other.ColorB),
+	}
+}
+
 // CalculateStats derives physical stats from genes (Phenotype).
 func (g Genome) CalculateStats() (mass, speed, viewRadius, bmr float64, isCarnivore bool) {
 	mass = g.SizeGene * g.SizeGene // Mass grows quadratically with size (2D approximation)
