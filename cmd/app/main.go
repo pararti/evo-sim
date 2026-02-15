@@ -30,6 +30,17 @@ func main() {
 		}
 	}()
 
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		for range ticker.C {
+			w.Mu.RLock()
+			creatureCount := len(w.Creatures)
+			w.Mu.RUnlock()
+			speciesCount := w.SpeciesManager.GetSpeciesCount()
+			log.Printf("Species Count: %d, Creatures: %d", speciesCount, creatureCount)
+		}
+	}()
+
 	log.Println("Simulation started...")
 
 	ticker := time.NewTicker(time.Second / 60)

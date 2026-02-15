@@ -27,6 +27,9 @@ type Config struct {
 	ReproduceThreshold   float64
 	AsexualThresholdMult float64
 	MaxAge               float64
+
+	SpeciationThreshold     float64
+	MatingDistanceThreshold float64
 }
 
 func Load() *Config {
@@ -53,6 +56,8 @@ func Load() *Config {
 		ReproduceThreshold:   getEnvAsFloat("REPRODUCE_THRESHOLD", 150.0),
 		AsexualThresholdMult: getEnvAsFloat("ASEXUAL_THRESHOLD_MULT", 1.5),
 		MaxAge:               getEnvAsFloat("MAX_AGE", 10000.0),
+		SpeciationThreshold:     getEnvAsFloat("SPECIATION_THRESHOLD", 1.0),
+		MatingDistanceThreshold: getEnvAsFloat("MATING_DISTANCE_THRESHOLD", 0.5),
 	}
 }
 

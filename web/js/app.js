@@ -88,7 +88,14 @@ function parseWorldState(buffer) {
         const size = view.getFloat32(offset, true);
         offset += 4;
 
-        creatures.push({ id, x, y, isCarnivore, size });
+        const r = view.getUint8(offset);
+        offset += 1;
+        const g = view.getUint8(offset);
+        offset += 1;
+        const b = view.getUint8(offset);
+        offset += 1;
+
+        creatures.push({ id, x, y, isCarnivore, size, color: { r, g, b } });
     }
 
     // --- 2. Food ---

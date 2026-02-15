@@ -8,6 +8,8 @@ import (
 
 type Creature struct {
 	ID     int
+	SpeciesID int // Tracks the evolutionary lineage
+	Generation int
 	X, Y   float64
 	Energy float64
 
@@ -37,6 +39,8 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 
 	return &Creature{
 		ID:     id,
+		SpeciesID: 0, // Will be assigned by World
+		Generation: 1,
 		X:      x,
 		Y:      y,
 		Energy: maxEnergy * 0.5, // Start with 50% max energy
@@ -130,6 +134,8 @@ func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Cre
 
 	child := &Creature{
 		ID:     0, // To be assigned by world
+		SpeciesID: c.SpeciesID,
+		Generation: c.Generation + 1,
 		X:      c.X,
 		Y:      c.Y,
 		Energy: c.Energy / 2, // Parent gives half energy
@@ -169,8 +175,15 @@ func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrengt
 	c.Energy -= energyFromP1
 	mate.Energy -= energyFromP2
 
+	gen := c.Generation
+	if mate.Generation > gen {
+		gen = mate.Generation
+	}
+
 	return &Creature{
 		ID:                    0,
+		SpeciesID:             c.SpeciesID, // Inherit from mother
+		Generation:            gen + 1,
 		X:                     (c.X + mate.X) / 2,
 		Y:                     (c.Y + mate.Y) / 2,
 		Energy:                energyFromP1 + energyFromP2,

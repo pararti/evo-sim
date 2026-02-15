@@ -16,16 +16,18 @@ type World struct {
 	Food      []entity.Food
 	Grid      *Grid
 	Terrain   *TerrainGrid
+	SpeciesManager *SpeciesManager
 	Mu        sync.RWMutex
 	StartTime time.Time
 }
 
 func NewWorld(cfg *config.Config) *World {
 	w := &World{
-		Cfg:       cfg,
-		Grid:      NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
-		Terrain:   NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
-		StartTime: time.Now(),
+		Cfg:            cfg,
+		Grid:           NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
+		Terrain:        NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
+		SpeciesManager: NewSpeciesManager(cfg.SpeciationThreshold),
+		StartTime:      time.Now(),
 	}
 
 	w.spawnRandomCreatures(cfg.InitialPop)
@@ -43,13 +45,15 @@ func (w *World) spawnRandomCreatures(count int) {
 			x := rand.Float64() * w.Cfg.WorldWidth
 			y := rand.Float64() * w.Cfg.WorldHeight
 			if w.Terrain.GetType(x, y) != Water {
-				w.Creatures = append(w.Creatures, entity.NewCreature(
+				c := entity.NewCreature(
 					rand.IntN(10000000),
 					x, y,
 					w.Cfg.InputSize,
 					w.Cfg.HiddenSize,
 					w.Cfg.OutputSize,
-				))
+				)
+				c.SpeciesID = w.SpeciesManager.Classify(c.Genome)
+				w.Creatures = append(w.Creatures, c)
 				break
 			}
 		}
@@ -145,6 +149,7 @@ func (w *World) Update() {
 				if target != nil && target.Size < c.Size*1.2 {
 					c.Energy += target.Energy * 0.8
 					deadCreatures[targetID] = true
+					w.SpeciesManager.RemoveCreature(target.SpeciesID)
 				}
 			}
 		}
@@ -161,6 +166,7 @@ func (w *World) Update() {
 			}
 			if child != nil {
 				child.ID = rand.IntN(10000000)
+				child.SpeciesID = w.SpeciesManager.Classify(child.Genome)
 				newChildren = append(newChildren, child)
 				matedThisTick[c.ID] = true
 			}
@@ -168,6 +174,7 @@ func (w *World) Update() {
 
 		if c.Energy <= 0 {
 			deadCreatures[c.ID] = true
+			w.SpeciesManager.RemoveCreature(c.SpeciesID)
 		}
 	}
 
@@ -270,6 +277,9 @@ func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.C
 				continue
 			}
 			if other.IsCarnivore != c.IsCarnivore {
+				continue
+			}
+			if c.Genome.Distance(other.Genome) > w.Cfg.MatingDistanceThreshold {
 				continue
 			}
 			dist := math.Hypot(other.X-c.X, other.Y-c.Y)

@@ -127,3 +127,25 @@ func (g Genome) CalculateStats() (mass, speed, viewRadius, bmr, maxEnergy, repro
 
 	return
 }
+
+// Distance calculates the genetic distance between two genomes.
+// Used for speciation and reproductive isolation.
+func (g Genome) Distance(other Genome) float64 {
+	dSize := g.SizeGene - other.SizeGene
+	dSpeed := g.SpeedGene - other.SpeedGene
+	dSense := (g.SenseGene - other.SenseGene) * 0.01 // Normalize sense (range 50-300)
+	dDiet := g.DietGene - other.DietGene
+	dMeta := g.MetabolismGene - other.MetabolismGene
+	dFert := g.FertilityGene - other.FertilityGene
+	dConst := g.ConstitutionGene - other.ConstitutionGene
+
+	sumSq := dSize*dSize +
+		dSpeed*dSpeed +
+		dSense*dSense +
+		dDiet*dDiet +
+		dMeta*dMeta +
+		dFert*dFert +
+		dConst*dConst
+
+	return math.Sqrt(sumSq)
+}
