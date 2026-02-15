@@ -118,12 +118,19 @@ export class Renderer {
             for (let i = 0; i < state.creatures.length; i++) {
                 const c = state.creatures[i];
                 
-                if (c.isCarnivore) {
-                    this.ctx.shadowColor = '#ff4d4d';
-                    this.ctx.fillStyle = '#ff4d4d';
+                if (c.color) {
+                    const colorStr = `rgb(${c.color.r},${c.color.g},${c.color.b})`;
+                    this.ctx.fillStyle = colorStr;
+                    this.ctx.shadowColor = colorStr;
                 } else {
-                    this.ctx.shadowColor = '#00ff9d';
-                    this.ctx.fillStyle = '#00ff9d';
+                    // Fallback
+                    if (c.isCarnivore) {
+                        this.ctx.shadowColor = '#ff4d4d';
+                        this.ctx.fillStyle = '#ff4d4d';
+                    } else {
+                        this.ctx.shadowColor = '#00ff9d';
+                        this.ctx.fillStyle = '#00ff9d';
+                    }
                 }
 
                 const radius = 5 * (c.size || 1.0);
@@ -131,10 +138,10 @@ export class Renderer {
                 this.ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
                 this.ctx.fill();
                 
-                // Optional: border for carnivores
+                // Border for carnivores
                 if (c.isCarnivore) {
-                    this.ctx.strokeStyle = '#fff';
-                    this.ctx.lineWidth = 1;
+                    this.ctx.strokeStyle = '#ff0000';
+                    this.ctx.lineWidth = 2;
                     this.ctx.stroke();
                 }
             }

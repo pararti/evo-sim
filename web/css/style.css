@@ -70,8 +70,8 @@ canvas {
     display: inline-block;
 }
 
-.dot.herbivore { background-color: #00ff9d; box-shadow: 0 0 5px #00ff9d; }
-.dot.carnivore { background-color: #ff4d4d; box-shadow: 0 0 5px #ff4d4d; }
+.dot.herbivore-border { background-color: transparent; border: 2px solid #00ff9d; box-shadow: 0 0 5px #00ff9d; }
+.dot.carnivore-border { background-color: transparent; border: 2px solid #ff4d4d; box-shadow: 0 0 5px #ff4d4d; }
 .dot.food { background-color: #ffe100; box-shadow: 0 0 5px #ffe100; }
 
 .box.oasis {

@@ -36,8 +36,8 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		creaturesCount := len(s.World.Creatures)
 		foodCount := len(s.World.Food)
 
-		// (2 bytes header) + (N * 15 bytes) + (2 bytes header) + (M * 8 bytes)
-		packetSize := 2 + (creaturesCount * 15) + 2 + (foodCount * 8)
+		// (2 bytes header) + (N * 18 bytes) + (2 bytes header) + (M * 8 bytes)
+		packetSize := 2 + (creaturesCount * 18) + 2 + (foodCount * 8)
 		buf := make([]byte, packetSize)
 		offset := 0
 
@@ -64,6 +64,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			// Size (4 bytes)
 			binary.LittleEndian.PutUint32(buf[offset:], math.Float32bits(float32(c.Size)))
 			offset += 4
+			// Color (3 bytes)
+			buf[offset] = uint8(c.Genome.ColorR * 255)
+			offset++
+			buf[offset] = uint8(c.Genome.ColorG * 255)
+			offset++
+			buf[offset] = uint8(c.Genome.ColorB * 255)
+			offset++
 		}
 
 		// === FOOD SECTION ===
