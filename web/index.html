@@ -14,7 +14,15 @@
         <div class="status-indicator" id="connection-status"></div>
     </div>
 
+    <div class="info-section">
+        <p>Neural Network Evolution Simulation. Creatures learn to survive, find food, and avoid predators in a dynamic environment.</p>
+    </div>
+
     <div class="stats-panel">
+        <div class="stat-row">
+            <span class="label">Uptime:</span>
+            <span class="value" id="stat-uptime">00:00:00</span>
+        </div>
         <div class="stat-row">
             <span class="label">Alive:</span>
             <span class="value" id="stat-alive">0</span>
@@ -26,6 +34,21 @@
         <div class="stat-row">
             <span class="label">FPS:</span>
             <span class="value" id="stat-fps">0</span>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="dot herbivore"></span> Herbivore
+        </div>
+        <div class="legend-item">
+            <span class="dot carnivore"></span> Carnivore
+        </div>
+        <div class="legend-item">
+            <span class="dot food"></span> Food
+        </div>
+        <div class="legend-item">
+            <span class="box oasis"></span> Oasis Zone
         </div>
     </div>
 </div>

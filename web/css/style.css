@@ -27,7 +27,7 @@ canvas {
     position: absolute;
     top: 20px;
     left: 20px;
-    width: 200px;
+    width: 250px;
     background: var(--hud-bg);
     padding: 15px;
     border-radius: 8px;
@@ -35,6 +35,50 @@ canvas {
     backdrop-filter: blur(5px);
     pointer-events: none;
     box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.info-section {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: #888;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.legend {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.dot.herbivore { background-color: #00ff9d; box-shadow: 0 0 5px #00ff9d; }
+.dot.carnivore { background-color: #ff4d4d; box-shadow: 0 0 5px #ff4d4d; }
+.dot.food { background-color: #ffe100; box-shadow: 0 0 5px #ffe100; }
+
+.box.oasis {
+    width: 10px;
+    height: 10px;
+    background-color: rgba(0, 255, 100, 0.2);
+    border: 1px solid rgba(0, 255, 100, 0.4);
+    margin-right: 10px;
 }
 
 .header {

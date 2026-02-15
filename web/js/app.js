@@ -6,7 +6,10 @@ const renderer = new Renderer('sim-canvas');
 const uiAlive = document.getElementById('stat-alive');
 const uiFood = document.getElementById('stat-food');
 const uiFps = document.getElementById('stat-fps');
+const uiUptime = document.getElementById('stat-uptime');
 const uiStatus = document.getElementById('connection-status');
+
+const startTime = Date.now();
 
 
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
@@ -106,6 +109,13 @@ function updateStats(state) {
         uiFps.innerText = frameCount;
         frameCount = 0;
         lastFrameTime = now;
+
+        // Update uptime
+        const diff = Math.floor((Date.now() - startTime) / 1000);
+        const hrs = Math.floor(diff / 3600).toString().padStart(2, '0');
+        const mins = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+        const secs = (diff % 60).toString().padStart(2, '0');
+        uiUptime.innerText = `${hrs}:${mins}:${secs}`;
     }
 }
 
