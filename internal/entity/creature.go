@@ -100,7 +100,7 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terra
 	c.Age++
 }
 
-func (c *Creature) Reproduce(mutationRate, mutationStrength float64) *Creature {
+func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Creature {
 	childBrain := c.Brain.Clone()
 	childBrain.Mutate(mutationRate, mutationStrength)
 
@@ -129,4 +129,37 @@ func (c *Creature) Reproduce(mutationRate, mutationStrength float64) *Creature {
 
 	c.Energy /= 2
 	return child
+}
+
+func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrength float64) *Creature {
+	// Crossover genomes + mutate
+	childGenome := c.Genome.Crossover(mate.Genome)
+	childGenome = childGenome.Mutate(mutationRate, mutationStrength)
+
+	// Crossover brains + mutate
+	childBrain := c.Brain.Crossover(mate.Brain)
+	childBrain.Mutate(mutationRate, mutationStrength)
+
+	_, speed, view, bmr, isCarn := childGenome.CalculateStats()
+
+	// Each parent gives 1/3 of energy
+	energyFromP1 := c.Energy / 3
+	energyFromP2 := mate.Energy / 3
+	c.Energy -= energyFromP1
+	mate.Energy -= energyFromP2
+
+	return &Creature{
+		ID:          0,
+		X:           (c.X + mate.X) / 2,
+		Y:           (c.Y + mate.Y) / 2,
+		Energy:      energyFromP1 + energyFromP2,
+		Size:        childGenome.SizeGene,
+		Speed:       speed,
+		ViewRadius:  view,
+		BMR:         bmr,
+		IsCarnivore: isCarn,
+		Age:         0,
+		Genome:      childGenome,
+		Brain:       childBrain,
+	}
 }
