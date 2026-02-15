@@ -125,7 +125,7 @@ func (w *World) Update() {
 		// Get Terrain Physics
 		speedFactor, energyCostFactor := w.Terrain.GetMovementPenalty(c.X, c.Y)
 		
-		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight)
+		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight, w.Cfg.MaxAge)
 
 		// Boundaries
 		if c.X < 0 { c.X = 0 } else if c.X > w.Cfg.WorldWidth { c.X = w.Cfg.WorldWidth }
@@ -166,7 +166,7 @@ func (w *World) Update() {
 			}
 		}
 
-		if c.Energy <= 0 || c.Age > 10000 {
+		if c.Energy <= 0 {
 			deadCreatures[c.ID] = true
 		}
 	}

@@ -50,7 +50,7 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH float64) {
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH, maxAge float64) {
 	// Inputs normalized relative to ViewRadius where possible
 	// 1-2: relative food pos
 	// 3-4: relative creature pos
@@ -92,10 +92,17 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terra
 	// 1. Basal Metabolic Rate (Living cost)
 	// 2. Movement Cost (Work = Force * Distance). F = ma. Heavier creatures spend more energy moving.
 	// 3. Terrain Resistance (Mud/Water makes it harder)
+	// 4. Aging Cost (Gradient Aging). As creatures age, they become less efficient.
 	movementDist := math.Sqrt(dx*dx + dy*dy)
 	movementCost := movementDist * (c.Size * c.Size) * 0.1 * terrainEnergyFactor // Mass ~ Size^2
 
-	c.Energy -= (c.BMR + movementCost)
+	// Calculate aging factor: 1 + (Age/MaxAge)^2
+	// This means young creatures pay ~1x BMR, but old ones pay significantly more.
+	// At MaxAge, they pay 2x BMR. Past MaxAge, it skyrockets.
+	ageRatio := float64(c.Age) / maxAge
+	agingFactor := 1.0 + (ageRatio * ageRatio)
+
+	c.Energy -= (c.BMR * agingFactor) + movementCost
 	
 	c.Age++
 }
