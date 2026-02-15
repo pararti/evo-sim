@@ -72,6 +72,33 @@ func (nn *Network) Clone() *Network {
 	return newNet
 }
 
+// Crossover creates a child network by picking each weight from a random parent (uniform crossover).
+func (nn *Network) Crossover(other *Network) *Network {
+	child := &Network{
+		InputSize:  nn.InputSize,
+		HiddenSize: nn.HiddenSize,
+		OutputSize: nn.OutputSize,
+	}
+	child.Weights1 = crossoverMatrix(nn.Weights1, other.Weights1)
+	child.Weights2 = crossoverMatrix(nn.Weights2, other.Weights2)
+	return child
+}
+
+func crossoverMatrix(a, b [][]float64) [][]float64 {
+	result := make([][]float64, len(a))
+	for i := range a {
+		result[i] = make([]float64, len(a[i]))
+		for j := range a[i] {
+			if rand.Float64() < 0.5 {
+				result[i][j] = a[i][j]
+			} else {
+				result[i][j] = b[i][j]
+			}
+		}
+	}
+	return result
+}
+
 func (nn *Network) Mutate(rate, strength float64) {
 	mutateMatrix(nn.Weights1, rate, strength)
 	mutateMatrix(nn.Weights2, rate, strength)
