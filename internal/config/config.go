@@ -35,6 +35,13 @@ type Config struct {
 
 	SpeciationThreshold     float64
 	MatingDistanceThreshold float64
+
+	// Bio-improvements
+	CarrionEnergyMult   float64 // Multiplier for dead creature's mass → carrion energy
+	CarrionLifespan     int     // Ticks before carrion fully decays
+	MaturityAgeFraction float64 // Fraction of MaxAge before reproduction is possible
+	InbreedingThreshold float64 // Min genetic distance for healthy offspring
+	InbreedingPenalty   float64 // Energy reduction fraction for inbred offspring
 }
 
 func Load() *Config {
@@ -68,6 +75,12 @@ func Load() *Config {
 
 		SpeciationThreshold:     getEnvAsFloat("SPECIATION_THRESHOLD", 1.0),
 		MatingDistanceThreshold: getEnvAsFloat("MATING_DISTANCE_THRESHOLD", 0.5),
+
+		CarrionEnergyMult:   getEnvAsFloat("CARRION_ENERGY_MULT", 30.0),
+		CarrionLifespan:     getEnvAsInt("CARRION_LIFESPAN", 600),
+		MaturityAgeFraction: getEnvAsFloat("MATURITY_AGE_FRACTION", 0.05),
+		InbreedingThreshold: getEnvAsFloat("INBREEDING_THRESHOLD", 0.15),
+		InbreedingPenalty:   getEnvAsFloat("INBREEDING_PENALTY", 0.2),
 	}
 }
 

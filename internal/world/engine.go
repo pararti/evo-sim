@@ -112,9 +112,11 @@ func (w *World) Update() {
 	}
 
 	var newChildren []*entity.Creature
+	var newCarrion []entity.Food
 	deadCreatures := make(map[int]bool)
 	eatenFood := make(map[int]bool)
 	matedThisTick := make(map[int]bool)
+	maturityAge := int(w.Cfg.MaxAge * w.Cfg.MaturityAgeFraction)
 
 	// 2. Main Simulation Loop
 	for _, c := range w.Creatures {
@@ -123,14 +125,11 @@ func (w *World) Update() {
 		}
 
 		// Find targets
-		foodX, foodY, foodDist, foodID := w.findNearestFood(c, eatenFood)
-		targetX, targetY, targetDist, targetID, isTargetCarnivore := w.findNearestCreature(c, deadCreatures)
+		foodX, foodY, foodDist, foodID, foodEnergy := w.findNearestFood(c, eatenFood)
+		targetX, targetY, targetDist, targetID, targetDiet := w.findNearestCreature(c, deadCreatures)
 
-		// Update Brain
-		roleVal := -1.0
-		if isTargetCarnivore {
-			roleVal = 1.0
-		}
+		// Continuous diet signal: maps DietGene [0,1] → [-1,1]
+		roleVal := targetDiet*2.0 - 1.0
 
 		// Get Terrain Physics
 		speedFactor, energyCostFactor := w.Terrain.GetMovementPenalty(c.X, c.Y)
@@ -158,31 +157,47 @@ func (w *World) Update() {
 			c.Y = w.Cfg.WorldHeight
 		}
 
-		// Interactions
-		if !c.IsCarnivore && foodID != -1 && foodDist < w.Cfg.EatRadius*c.Size {
+		// Interactions — continuous diet spectrum
+		// Food eating: any creature can eat, efficiency depends on DietGene
+		if foodID != -1 && foodDist < w.Cfg.EatRadius*c.Size {
 			if !eatenFood[foodID] {
-				c.Energy += w.Cfg.FoodEnergy
+				if foodEnergy > 0 {
+					// Carrion (dead creature remains): carnivores benefit more
+					c.Energy += foodEnergy * c.Genome.DietGene
+				} else {
+					// Plant: herbivores benefit more
+					c.Energy += w.Cfg.FoodEnergy * (1.0 - c.Genome.DietGene)
+				}
 				eatenFood[foodID] = true
 			}
 		}
 
-		if c.IsCarnivore && targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size {
+		// Hunting: efficiency scales with DietGene
+		if targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size && c.Genome.DietGene > 0 {
 			if !deadCreatures[targetID] {
 				target := w.getCreatureByID(targetID)
 				if target != nil && target.Size < c.Size*1.2 {
-					c.Energy += target.Energy * 0.8
+					c.Energy += target.Energy * c.Genome.DietGene * 0.8
 					deadCreatures[targetID] = true
 					w.SpeciesManager.RemoveCreature(target.SpeciesID)
+					// Spawn carrion from kill remains (30% of body mass remains)
+					newCarrion = append(newCarrion, entity.Food{
+						ID:         rand.IntN(10000000),
+						X:          target.X,
+						Y:          target.Y,
+						Energy:     target.Mass * w.Cfg.CarrionEnergyMult * 0.3,
+						DecayTicks: w.Cfg.CarrionLifespan,
+					})
 				}
 			}
 		}
 
-		// Reproduction
-		if c.Energy > c.ReproductionThreshold && !matedThisTick[c.ID] {
+		// Reproduction — requires maturity age
+		if c.Energy > c.ReproductionThreshold && !matedThisTick[c.ID] && c.Age >= maturityAge {
 			mate := w.findMate(c, deadCreatures, matedThisTick)
 			var child *entity.Creature
 			if mate != nil {
-				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength)
+				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength, w.Cfg.InbreedingThreshold, w.Cfg.InbreedingPenalty)
 				matedThisTick[mate.ID] = true
 			} else if c.Energy > c.ReproductionThreshold*w.Cfg.AsexualThresholdMult {
 				child = c.ReproduceAsexual(w.Cfg.MutationRate, w.Cfg.MutationStrength)
@@ -198,6 +213,14 @@ func (w *World) Update() {
 		if c.Energy <= 0 {
 			deadCreatures[c.ID] = true
 			w.SpeciesManager.RemoveCreature(c.SpeciesID)
+			// Spawn carrion from natural death
+			newCarrion = append(newCarrion, entity.Food{
+				ID:         rand.IntN(10000000),
+				X:          c.X,
+				Y:          c.Y,
+				Energy:     c.Mass * w.Cfg.CarrionEnergyMult,
+				DecayTicks: w.Cfg.CarrionLifespan,
+			})
 		}
 	}
 
@@ -211,14 +234,21 @@ func (w *World) Update() {
 	}
 	w.Creatures = append(newCreatureList, newChildren...)
 
-	// Remove eaten food
+	// Remove eaten food and decay carrion
 	newFoodList := make([]entity.Food, 0, len(w.Food))
 	for _, f := range w.Food {
-		if !eatenFood[f.ID] {
-			newFoodList = append(newFoodList, f)
+		if eatenFood[f.ID] {
+			continue
 		}
+		if f.DecayTicks > 0 {
+			f.DecayTicks--
+			if f.DecayTicks <= 0 {
+				continue // Carrion fully decayed
+			}
+		}
+		newFoodList = append(newFoodList, f)
 	}
-	w.Food = newFoodList
+	w.Food = append(newFoodList, newCarrion...)
 
 	// Dynamic Food Spawning (Entropy control)
 	w.FoodSpawnAccumulator += w.Cfg.FoodSpawnChance
@@ -242,55 +272,47 @@ func (w *World) getCreatureByID(id int) *entity.Creature {
 	return nil
 }
 
-func (w *World) findNearestCreature(c *entity.Creature, dead map[int]bool) (float64, float64, float64, int, bool) {
+func (w *World) findNearestCreature(c *entity.Creature, dead map[int]bool) (float64, float64, float64, int, float64) {
 	minDist := math.MaxFloat64
 	var nx, ny float64
 	var targetID = -1
-	var isCarnivore bool
+	var targetDiet float64
 
-	// Use creature's view radius, but clamp it to reasonable grid lookup limits if needed
 	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, func(other *entity.Creature) {
 		if other.ID == c.ID || dead[other.ID] {
 			return
 		}
 		dist := math.Hypot(other.X-c.X, other.Y-c.Y)
-		// Only see things within ViewRadius
 		if dist < c.ViewRadius && dist < minDist {
-			minDist, nx, ny, targetID, isCarnivore = dist, other.X, other.Y, other.ID, other.IsCarnivore
+			minDist, nx, ny, targetID, targetDiet = dist, other.X, other.Y, other.ID, other.Genome.DietGene
 		}
 	}, nil)
 
-	return nx, ny, minDist, targetID, isCarnivore
+	return nx, ny, minDist, targetID, targetDiet
 }
 
-func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64, float64, float64, int) {
+func (w *World) findNearestFood(c *entity.Creature, eaten map[int]bool) (float64, float64, float64, int, float64) {
 	minDist := math.MaxFloat64
 	var nx, ny float64
 	var fid = -1
+	var fEnergy float64
 
-	// 1. Spatial
 	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, nil, func(f entity.Food) {
 		if eaten[f.ID] {
 			return
 		}
 		dist := math.Hypot(f.X-c.X, f.Y-c.Y)
 		if dist < c.ViewRadius && dist < minDist {
-			minDist, nx, ny, fid = dist, f.X, f.Y, f.ID
+			minDist, nx, ny, fid, fEnergy = dist, f.X, f.Y, f.ID, f.Energy
 		}
 	})
 
-	// 2. Global Fallback (only if no spatial result found? Or remove global fallback to enforce blindness?)
-	// To make evolution real, if they can't see it, they can't find it.
-	// But to prevent total extinction of "blind" early gens, maybe keep a small "smell" range?
-	// For now, let's remove the global fallback to strictly enforce ViewRadius.
-	// This makes "SenseGene" actually valuable.
-
-	return nx, ny, minDist, fid
+	return nx, ny, minDist, fid, fEnergy
 }
 
 func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.Creature {
 	var best *entity.Creature
-	bestDist := math.MaxFloat64
+	bestScore := -1.0
 
 	w.Grid.ForEachNeighbor(c.X, c.Y, c.ViewRadius, func(other *entity.Creature) {
 		if other.ID == c.ID || dead[other.ID] || mated[other.ID] {
@@ -299,16 +321,20 @@ func (w *World) findMate(c *entity.Creature, dead, mated map[int]bool) *entity.C
 		if other.Energy <= other.ReproductionThreshold {
 			return
 		}
-		if other.IsCarnivore != c.IsCarnivore {
-			return
-		}
-		if c.Genome.Distance(other.Genome) > w.Cfg.MatingDistanceThreshold {
+		geneticDist := c.Genome.Distance(other.Genome)
+		if geneticDist > w.Cfg.MatingDistanceThreshold {
 			return
 		}
 		dist := math.Hypot(other.X-c.X, other.Y-c.Y)
-		if dist < c.ViewRadius && dist < w.Cfg.EatRadius*c.Size && dist < bestDist {
-			bestDist = dist
-			best = other
+		if dist < c.ViewRadius && dist < w.Cfg.EatRadius*c.Size {
+			// Sexual selection: score based on fitness indicators
+			energyRatio := other.Energy / other.MaxEnergy
+			geneticCompat := 1.0 - (geneticDist / w.Cfg.MatingDistanceThreshold)
+			score := energyRatio*0.5 + (other.Size/4.0)*0.2 + geneticCompat*0.3
+			if score > bestScore {
+				bestScore = score
+				best = other
+			}
 		}
 	}, nil)
 
