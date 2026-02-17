@@ -178,27 +178,7 @@ func (w *World) Update() {
 			}
 		}
 
-		// Hunting: efficiency scales with DietGene
-		if targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size && c.Genome.ExpressedDiet() > 0 {
-			if !deadCreatures[targetID] {
-				target := w.getCreatureByID(targetID)
-				if target != nil && target.Size < c.Size*1.2 {
-					c.Energy += target.Energy * c.Genome.ExpressedDiet() * 0.8
-					deadCreatures[targetID] = true
-					w.SpeciesManager.RemoveCreature(target.SpeciesID)
-					// Spawn carrion from kill remains (30% of body mass remains)
-					newCarrion = append(newCarrion, entity.Food{
-						ID:         rand.IntN(10000000),
-						X:          target.X,
-						Y:          target.Y,
-						Energy:     target.Mass * w.Cfg.CarrionEnergyMult * 0.3,
-						DecayTicks: w.Cfg.CarrionLifespan,
-					})
-				}
-			}
-		}
-
-		// Reproduction — requires maturity age
+		// Reproduction — checked BEFORE hunting (mating takes priority over predation)
 		if c.Energy > c.ReproductionThreshold && !matedThisTick[c.ID] && c.Age >= maturityAge {
 			mate := w.findMate(c, deadCreatures, matedThisTick)
 			var child *entity.Creature
@@ -213,6 +193,29 @@ func (w *World) Update() {
 				child.SpeciesID = w.SpeciesManager.Classify(child.Genome)
 				newChildren = append(newChildren, child)
 				matedThisTick[c.ID] = true
+			}
+		}
+
+		// Hunting: only for true carnivores, and not against genetically similar creatures
+		diet := c.Genome.ExpressedDiet()
+		if targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size && diet > 0.5 && !matedThisTick[c.ID] {
+			if !deadCreatures[targetID] {
+				target := w.getCreatureByID(targetID)
+				if target != nil && target.Size < c.Size*1.2 {
+					// Don't hunt your own kind (genetic similarity check)
+					if c.Genome.Distance(target.Genome) > w.Cfg.MatingDistanceThreshold {
+						c.Energy += target.Energy * diet * 0.8
+						deadCreatures[targetID] = true
+						w.SpeciesManager.RemoveCreature(target.SpeciesID)
+						newCarrion = append(newCarrion, entity.Food{
+							ID:         rand.IntN(10000000),
+							X:          target.X,
+							Y:          target.Y,
+							Energy:     target.Mass * w.Cfg.CarrionEnergyMult * 0.3,
+							DecayTicks: w.Cfg.CarrionLifespan,
+						})
+					}
+				}
 			}
 		}
 
