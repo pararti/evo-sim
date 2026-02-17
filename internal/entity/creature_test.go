@@ -8,7 +8,6 @@ import (
 )
 
 func TestCreature_ReproduceSexual(t *testing.T) {
-	// Create two parent creatures with known positions and energy
 	p1 := &Creature{
 		ID:                    1,
 		X:                     100.0,
@@ -23,11 +22,17 @@ func TestCreature_ReproduceSexual(t *testing.T) {
 		ReproductionThreshold: 500.0,
 		IsCarnivore:           false,
 		Genome: Genome{
-			SizeGene: 1.0, SpeedGene: 1.0, SenseGene: 100.0, DietGene: 0.2,
-			MetabolismGene: 1.0, FertilityGene: 0.5, ConstitutionGene: 1.0,
+			SizeAllele1: 1.0, SizeAllele2: 1.0,
+			SpeedAllele1: 1.0, SpeedAllele2: 1.0,
+			SenseAllele1: 100.0, SenseAllele2: 100.0,
+			DietAllele1: 0.2, DietAllele2: 0.2,
+			MetabolismAllele1: 1.0, MetabolismAllele2: 1.0,
+			FertilityAllele1: 0.5, FertilityAllele2: 0.5,
+			ConstitutionAllele1: 1.0, ConstitutionAllele2: 1.0,
+			HiddenAllele1: 6.0, HiddenAllele2: 6.0,
 			ColorR: 0.0, ColorG: 1.0, ColorB: 0.0,
 		},
-		Brain: brain.NewNetwork(10, 6, 2),
+		Brain: brain.NewNetwork(11, 6, 2),
 	}
 	p2 := &Creature{
 		ID:                    2,
@@ -43,17 +48,23 @@ func TestCreature_ReproduceSexual(t *testing.T) {
 		ReproductionThreshold: 1000.0,
 		IsCarnivore:           false,
 		Genome: Genome{
-			SizeGene: 1.5, SpeedGene: 0.8, SenseGene: 120.0, DietGene: 0.3,
-			MetabolismGene: 1.0, FertilityGene: 0.5, ConstitutionGene: 1.0,
+			SizeAllele1: 1.5, SizeAllele2: 1.5,
+			SpeedAllele1: 0.8, SpeedAllele2: 0.8,
+			SenseAllele1: 120.0, SenseAllele2: 120.0,
+			DietAllele1: 0.3, DietAllele2: 0.3,
+			MetabolismAllele1: 1.0, MetabolismAllele2: 1.0,
+			FertilityAllele1: 0.5, FertilityAllele2: 0.5,
+			ConstitutionAllele1: 1.0, ConstitutionAllele2: 1.0,
+			HiddenAllele1: 6.0, HiddenAllele2: 6.0,
 			ColorR: 0.0, ColorG: 0.5, ColorB: 0.5,
 		},
-		Brain: brain.NewNetwork(10, 6, 2),
+		Brain: brain.NewNetwork(11, 6, 2),
 	}
 
 	p1EnergyBefore := p1.Energy
 	p2EnergyBefore := p2.Energy
 
-	child := p1.ReproduceSexual(p2, 0.1, 0.2, 0.15, 0.2)
+	child := p1.ReproduceSexual(p2, 0.1, 0.2, 0.15, 0.2, 0.005)
 
 	// Each parent loses 1/3 of their energy
 	expectedP1Loss := p1EnergyBefore / 3
@@ -73,23 +84,19 @@ func TestCreature_ReproduceSexual(t *testing.T) {
 	}
 
 	// Child position is midpoint of parents
-	expectedX := (p1.X + p2.X) / 2 // Note: p1.X was not changed by ReproduceSexual
+	expectedX := (p1.X + p2.X) / 2
 	expectedY := (p1.Y + p2.Y) / 2
-	// p1.X=100, p2.X=120 -> midpoint was calculated before energy deduction
-	// Actually the positions don't change, only energy does
 	if math.Abs(child.X-110.0) > 0.001 || math.Abs(child.Y-210.0) > 0.001 {
 		t.Errorf("Child position: got (%f, %f), want (%f, %f)", child.X, child.Y, expectedX, expectedY)
 	}
 
-	// Child has valid genome and brain
 	if child.Brain == nil {
 		t.Error("Child brain is nil")
 	}
 	if child.Age != 0 {
 		t.Errorf("Child age: got %d, want 0", child.Age)
 	}
-	
-	// Check that child has Mass and other new fields populated
+
 	if child.Mass <= 0 {
 		t.Errorf("Child mass should be positive, got %f", child.Mass)
 	}
