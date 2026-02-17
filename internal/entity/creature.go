@@ -160,7 +160,7 @@ func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Cre
 	return child
 }
 
-func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrength float64) *Creature {
+func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrength, inbreedingThreshold, inbreedingPenalty float64) *Creature {
 	// Crossover genomes + mutate
 	childGenome := c.Genome.Crossover(mate.Genome)
 	childGenome = childGenome.Mutate(mutationRate, mutationStrength)
@@ -177,6 +177,13 @@ func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrengt
 	c.Energy -= energyFromP1
 	mate.Energy -= energyFromP2
 
+	childEnergy := energyFromP1 + energyFromP2
+
+	// Inbreeding depression: penalize offspring of genetically similar parents
+	if c.Genome.Distance(mate.Genome) < inbreedingThreshold {
+		childEnergy *= (1.0 - inbreedingPenalty)
+	}
+
 	gen := c.Generation
 	if mate.Generation > gen {
 		gen = mate.Generation
@@ -188,7 +195,7 @@ func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrengt
 		Generation:            gen + 1,
 		X:                     (c.X + mate.X) / 2,
 		Y:                     (c.Y + mate.Y) / 2,
-		Energy:                energyFromP1 + energyFromP2,
+		Energy:                childEnergy,
 		Size:                  childGenome.SizeGene,
 		Mass:                  mass,
 		Speed:                 speed,

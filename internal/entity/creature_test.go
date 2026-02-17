@@ -53,7 +53,7 @@ func TestCreature_ReproduceSexual(t *testing.T) {
 	p1EnergyBefore := p1.Energy
 	p2EnergyBefore := p2.Energy
 
-	child := p1.ReproduceSexual(p2, 0.1, 0.2)
+	child := p1.ReproduceSexual(p2, 0.1, 0.2, 0.15, 0.2)
 
 	// Each parent loses 1/3 of their energy
 	expectedP1Loss := p1EnergyBefore / 3
