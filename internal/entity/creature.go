@@ -30,12 +30,12 @@ type Creature struct {
 	Brain  *brain.Network
 }
 
-func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *Creature {
-	net := brain.NewNetwork(inputSize, hiddenSize, outputSize)
+func NewCreature(id int, x, y float64, inputSize, outputSize int, brainCostPerNeuron float64) *Creature {
 	genome := NewRandomGenome()
 
 	// Calculate Phenotype from Genotype
-	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn := genome.CalculateStats()
+	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn, hiddenSize := genome.CalculateStats(brainCostPerNeuron)
+	net := brain.NewNetwork(inputSize, hiddenSize, outputSize)
 
 	return &Creature{
 		ID:         id,
@@ -45,7 +45,7 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 		Y:          y,
 		Energy:     maxEnergy * 0.5, // Start with 50% max energy
 
-		Size:                  genome.SizeGene, // Using SizeGene directly as visual size for now
+		Size:                  genome.ExpressedSize(), // Using SizeGene directly as visual size for now
 		Mass:                  mass,
 		Speed:                 speed,
 		ViewRadius:            view,
@@ -60,17 +60,14 @@ func NewCreature(id int, x, y float64, inputSize, hiddenSize, outputSize int) *C
 	}
 }
 
-func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH, maxAge, stressFactor float64) {
+func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terrainSpeedFactor, terrainEnergyFactor, worldW, worldH, maxAge, stressFactor, pheromone float64) {
 	// Inputs normalized relative to ViewRadius where possible
 	// 1-2: relative food pos
 	// 3-4: relative creature pos
 	// 5: current energy
 	// 6: target role
 	// 7-10: distances to walls
-
-	// Normalize distance by ViewRadius to allow evolution of sensing range
-	// If things are outside ViewRadius, inputs should be 0 (simulated by caller or here)
-	// For now, we keep global normalization but scaled
+	// 11: pheromone concentration
 
 	input := []float64{
 		(foodX - c.X) / c.ViewRadius,
@@ -83,6 +80,7 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terra
 		(worldW - c.X) / worldW,
 		c.Y / worldH,
 		(worldH - c.Y) / worldH,
+		pheromone / 10.0, // Normalize pheromone (capped at 10.0)
 	}
 
 	output := c.Brain.FeedForward(input)
@@ -124,15 +122,16 @@ func (c *Creature) Update(foodX, foodY, enemyX, enemyY, targetIsCarnivore, terra
 	c.Age++
 }
 
-func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Creature {
-	childBrain := c.Brain.Clone()
-	childBrain.Mutate(mutationRate, mutationStrength)
-
+func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength, brainCostPerNeuron float64) *Creature {
 	// Mutate Genome
 	childGenome := c.Genome.Mutate(mutationRate, mutationStrength)
 
-	// Calculate new Phenotype
-	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn := childGenome.CalculateStats()
+	// Calculate new Phenotype (may have different hidden size)
+	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn, hiddenSize := childGenome.CalculateStats(brainCostPerNeuron)
+
+	// Clone brain, adapting to child's hidden size
+	childBrain := c.Brain.CloneWithResize(hiddenSize)
+	childBrain.Mutate(mutationRate, mutationStrength)
 
 	child := &Creature{
 		ID:         0, // To be assigned by world
@@ -142,7 +141,7 @@ func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Cre
 		Y:          c.Y,
 		Energy:     c.Energy / 2, // Parent gives half energy
 
-		Size:                  childGenome.SizeGene,
+		Size:                  childGenome.ExpressedSize(),
 		Mass:                  mass,
 		Speed:                 speed,
 		ViewRadius:            view,
@@ -160,16 +159,16 @@ func (c *Creature) ReproduceAsexual(mutationRate, mutationStrength float64) *Cre
 	return child
 }
 
-func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrength, inbreedingThreshold, inbreedingPenalty float64) *Creature {
+func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrength, inbreedingThreshold, inbreedingPenalty, brainCostPerNeuron float64) *Creature {
 	// Crossover genomes + mutate
 	childGenome := c.Genome.Crossover(mate.Genome)
 	childGenome = childGenome.Mutate(mutationRate, mutationStrength)
 
-	// Crossover brains + mutate
-	childBrain := c.Brain.Crossover(mate.Brain)
-	childBrain.Mutate(mutationRate, mutationStrength)
+	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn, hiddenSize := childGenome.CalculateStats(brainCostPerNeuron)
 
-	mass, speed, view, bmr, maxEnergy, reproThresh, isCarn := childGenome.CalculateStats()
+	// Crossover brains with child's hidden size, then mutate
+	childBrain := c.Brain.CrossoverWithResize(mate.Brain, hiddenSize)
+	childBrain.Mutate(mutationRate, mutationStrength)
 
 	// Each parent gives 1/3 of energy
 	energyFromP1 := c.Energy / 3
@@ -196,7 +195,7 @@ func (c *Creature) ReproduceSexual(mate *Creature, mutationRate, mutationStrengt
 		X:                     (c.X + mate.X) / 2,
 		Y:                     (c.Y + mate.Y) / 2,
 		Energy:                childEnergy,
-		Size:                  childGenome.SizeGene,
+		Size:                  childGenome.ExpressedSize(),
 		Mass:                  mass,
 		Speed:                 speed,
 		ViewRadius:            view,

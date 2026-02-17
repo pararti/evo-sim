@@ -16,6 +16,7 @@ type World struct {
 	Food           []entity.Food
 	Grid           *Grid
 	Terrain        *TerrainGrid
+	Pheromone      *PheromoneGrid
 	SpeciesManager *SpeciesManager
 	Mu             sync.RWMutex
 	StartTime      time.Time
@@ -29,6 +30,7 @@ func NewWorld(cfg *config.Config) *World {
 		Cfg:                  cfg,
 		Grid:                 NewGrid(cfg.WorldWidth, cfg.WorldHeight, 40.0),
 		Terrain:              NewTerrainGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
+		Pheromone:            NewPheromoneGrid(cfg.WorldWidth, cfg.WorldHeight, 20.0),
 		SpeciesManager:       NewSpeciesManager(cfg.SpeciationThreshold),
 		StartTime:            time.Now(),
 		FoodSpawnAccumulator: 0.0,
@@ -53,8 +55,8 @@ func (w *World) spawnRandomCreatures(count int) {
 					rand.IntN(10000000),
 					x, y,
 					w.Cfg.InputSize,
-					w.Cfg.HiddenSize,
 					w.Cfg.OutputSize,
+					w.Cfg.BrainCostPerNeuron,
 				)
 				c.SpeciesID = w.SpeciesManager.Classify(c.Genome)
 				w.Creatures = append(w.Creatures, c)
@@ -143,7 +145,11 @@ func (w *World) Update() {
 		}, nil)
 		stressFactor := 1.0 + float64(neighbors)*w.Cfg.CrowdingMultiplier
 
-		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight, w.Cfg.MaxAge, stressFactor)
+		pheromoneVal := w.Pheromone.Get(c.X, c.Y)
+		c.Update(foodX, foodY, targetX, targetY, roleVal, speedFactor, energyCostFactor, w.Cfg.WorldWidth, w.Cfg.WorldHeight, w.Cfg.MaxAge, stressFactor, pheromoneVal)
+
+		// Deposit pheromone trail
+		w.Pheromone.Deposit(c.X, c.Y, w.Cfg.PheromoneDeposit)
 
 		// Boundaries
 		if c.X < 0 {
@@ -163,50 +169,53 @@ func (w *World) Update() {
 			if !eatenFood[foodID] {
 				if foodEnergy > 0 {
 					// Carrion (dead creature remains): carnivores benefit more
-					c.Energy += foodEnergy * c.Genome.DietGene
+					c.Energy += foodEnergy * c.Genome.ExpressedDiet()
 				} else {
 					// Plant: herbivores benefit more
-					c.Energy += w.Cfg.FoodEnergy * (1.0 - c.Genome.DietGene)
+					c.Energy += w.Cfg.FoodEnergy * (1.0 - c.Genome.ExpressedDiet())
 				}
 				eatenFood[foodID] = true
 			}
 		}
 
-		// Hunting: efficiency scales with DietGene
-		if targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size && c.Genome.DietGene > 0 {
-			if !deadCreatures[targetID] {
-				target := w.getCreatureByID(targetID)
-				if target != nil && target.Size < c.Size*1.2 {
-					c.Energy += target.Energy * c.Genome.DietGene * 0.8
-					deadCreatures[targetID] = true
-					w.SpeciesManager.RemoveCreature(target.SpeciesID)
-					// Spawn carrion from kill remains (30% of body mass remains)
-					newCarrion = append(newCarrion, entity.Food{
-						ID:         rand.IntN(10000000),
-						X:          target.X,
-						Y:          target.Y,
-						Energy:     target.Mass * w.Cfg.CarrionEnergyMult * 0.3,
-						DecayTicks: w.Cfg.CarrionLifespan,
-					})
-				}
-			}
-		}
-
-		// Reproduction — requires maturity age
+		// Reproduction — checked BEFORE hunting (mating takes priority over predation)
 		if c.Energy > c.ReproductionThreshold && !matedThisTick[c.ID] && c.Age >= maturityAge {
 			mate := w.findMate(c, deadCreatures, matedThisTick)
 			var child *entity.Creature
 			if mate != nil {
-				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength, w.Cfg.InbreedingThreshold, w.Cfg.InbreedingPenalty)
+				child = c.ReproduceSexual(mate, w.Cfg.MutationRate, w.Cfg.MutationStrength, w.Cfg.InbreedingThreshold, w.Cfg.InbreedingPenalty, w.Cfg.BrainCostPerNeuron)
 				matedThisTick[mate.ID] = true
 			} else if c.Energy > c.ReproductionThreshold*w.Cfg.AsexualThresholdMult {
-				child = c.ReproduceAsexual(w.Cfg.MutationRate, w.Cfg.MutationStrength)
+				child = c.ReproduceAsexual(w.Cfg.MutationRate, w.Cfg.MutationStrength, w.Cfg.BrainCostPerNeuron)
 			}
 			if child != nil {
 				child.ID = rand.IntN(10000000)
 				child.SpeciesID = w.SpeciesManager.Classify(child.Genome)
 				newChildren = append(newChildren, child)
 				matedThisTick[c.ID] = true
+			}
+		}
+
+		// Hunting: only for true carnivores, and not against genetically similar creatures
+		diet := c.Genome.ExpressedDiet()
+		if targetID != -1 && targetDist < w.Cfg.EatRadius*c.Size && diet > 0.5 && !matedThisTick[c.ID] {
+			if !deadCreatures[targetID] {
+				target := w.getCreatureByID(targetID)
+				if target != nil && target.Size < c.Size*1.2 {
+					// Don't hunt your own kind (genetic similarity check)
+					if c.Genome.Distance(target.Genome) > w.Cfg.MatingDistanceThreshold {
+						c.Energy += target.Energy * diet * 0.8
+						deadCreatures[targetID] = true
+						w.SpeciesManager.RemoveCreature(target.SpeciesID)
+						newCarrion = append(newCarrion, entity.Food{
+							ID:         rand.IntN(10000000),
+							X:          target.X,
+							Y:          target.Y,
+							Energy:     target.Mass * w.Cfg.CarrionEnergyMult * 0.3,
+							DecayTicks: w.Cfg.CarrionLifespan,
+						})
+					}
+				}
 			}
 		}
 
@@ -257,7 +266,10 @@ func (w *World) Update() {
 		w.FoodSpawnAccumulator -= 1.0
 	}
 
-	// 4. Rescue population
+	// 4. Decay pheromones
+	w.Pheromone.Decay(w.Cfg.PheromoneDecay)
+
+	// 5. Rescue population
 	if len(w.Creatures) < 10 {
 		w.spawnRandomCreatures(5)
 	}
@@ -284,7 +296,7 @@ func (w *World) findNearestCreature(c *entity.Creature, dead map[int]bool) (floa
 		}
 		dist := math.Hypot(other.X-c.X, other.Y-c.Y)
 		if dist < c.ViewRadius && dist < minDist {
-			minDist, nx, ny, targetID, targetDiet = dist, other.X, other.Y, other.ID, other.Genome.DietGene
+			minDist, nx, ny, targetID, targetDiet = dist, other.X, other.Y, other.ID, other.Genome.ExpressedDiet()
 		}
 	}, nil)
 
