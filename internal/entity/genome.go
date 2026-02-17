@@ -29,7 +29,7 @@ type Genome struct {
 func (g Genome) ExpressedSize() float64         { return math.Max(g.SizeAllele1, g.SizeAllele2) }
 func (g Genome) ExpressedSpeed() float64        { return math.Max(g.SpeedAllele1, g.SpeedAllele2) }
 func (g Genome) ExpressedSense() float64        { return (g.SenseAllele1 + g.SenseAllele2) / 2 }
-func (g Genome) ExpressedDiet() float64         { return (g.DietAllele1 + g.DietAllele2) / 2 }
+func (g Genome) ExpressedDiet() float64         { return math.Max(g.DietAllele1, g.DietAllele2) }
 func (g Genome) ExpressedMetabolism() float64   { return (g.MetabolismAllele1 + g.MetabolismAllele2) / 2 }
 func (g Genome) ExpressedFertility() float64    { return (g.FertilityAllele1 + g.FertilityAllele2) / 2 }
 func (g Genome) ExpressedConstitution() float64 { return (g.ConstitutionAllele1 + g.ConstitutionAllele2) / 2 }

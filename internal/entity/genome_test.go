@@ -196,7 +196,9 @@ func TestGenome_Diploid_Dominance(t *testing.T) {
 	if g.ExpressedSense() != 150.0 {
 		t.Errorf("Sense should be additive (avg): got %f, want 150.0", g.ExpressedSense())
 	}
-	if g.ExpressedDiet() != 0.5 {
-		t.Errorf("Diet should be additive (avg): got %f, want 0.5", g.ExpressedDiet())
+
+	// Diet is dominant (max) — carnivory dominates
+	if g.ExpressedDiet() != 0.7 {
+		t.Errorf("Diet should be dominant (max): got %f, want 0.7", g.ExpressedDiet())
 	}
 }
